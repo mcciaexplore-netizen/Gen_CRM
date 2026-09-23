@@ -7,21 +7,15 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectQueue } from "@nestjs/bullmq";
 import { Public } from "../../common/decorators/public.decorator";
-import type { Queue } from "bullmq";
-import { createHash, timingSafeEqual } from "node:crypto";
-import {
-  PROCESS_360DIALOG_WEBHOOK_JOB,
-  WHATSAPP_WEBHOOK_QUEUE,
-} from "./conversations.constants";
+import { timingSafeEqual } from "node:crypto";
+import { WhatsAppWebhookService } from "./whatsapp-webhook.service";
 
 @Controller("webhooks/360dialog")
 export class WhatsAppWebhookController {
   constructor(
     private readonly config: ConfigService,
-    @InjectQueue(WHATSAPP_WEBHOOK_QUEUE)
-    private readonly webhooksQueue: Queue,
+    private readonly webhooks: WhatsAppWebhookService,
   ) {}
 
   @Post()
@@ -34,19 +28,10 @@ export class WhatsAppWebhookController {
     if (!payload || typeof payload !== "object") {
       throw new BadRequestException("Webhook payload must be an object");
     }
-    const serialized = JSON.stringify(payload);
-    const digest = createHash("sha256").update(serialized).digest("hex");
-    await this.webhooksQueue.add(
-      PROCESS_360DIALOG_WEBHOOK_JOB,
-      { payload },
-      {
-        jobId: "d360-" + digest,
-        attempts: 5,
-        backoff: { type: "exponential", delay: 5_000 },
-        removeOnComplete: { age: 8 * 24 * 60 * 60, count: 20_000 },
-        removeOnFail: { age: 30 * 24 * 60 * 60, count: 10_000 },
-      },
-    );
+    
+    // Process webhook payload synchronously instead of adding it to a queue
+    await this.webhooks.process(payload);
+    
     return { received: true };
   }
 

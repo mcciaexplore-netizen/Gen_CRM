@@ -1,14 +1,8 @@
-import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable } from "@nestjs/common";
 import { RelatedEntityType, TaskSource, TaskStatus } from "@prisma/client";
-import type { Queue } from "bullmq";
 import { PrismaService } from "../../prisma/prisma.service";
 import { InvoiceAutomationService } from "../billing/invoice-automation.service";
-import {
-  SEND_WHATSAPP_REMINDER_JOB,
-  STALE_DEAL_DAYS,
-  WHATSAPP_REMINDER_QUEUE,
-} from "./tasks.constants";
+import { STALE_DEAL_DAYS } from "./tasks.constants";
 import { TasksService } from "./tasks.service";
 
 @Injectable()
@@ -17,8 +11,6 @@ export class TaskAutomationService {
     private readonly prisma: PrismaService,
     private readonly tasks: TasksService,
     private readonly invoices: InvoiceAutomationService,
-    @InjectQueue(WHATSAPP_REMINDER_QUEUE)
-    private readonly remindersQueue: Queue,
   ) {}
 
   async runDaily(now = new Date()) {
@@ -40,7 +32,6 @@ export class TaskAutomationService {
       paymentReminderTasksCreated += invoiceResult.reminderTasksCreated;
       const overdue = await this.tasks.markOverdue(business.id, now);
       tasksMarkedOverdue += overdue.count;
-      remindersQueued += await this.queueOverdueReminders(business.id);
     }
 
     return {
@@ -49,7 +40,6 @@ export class TaskAutomationService {
       invoicesMarkedOverdue,
       paymentReminderTasksCreated,
       tasksMarkedOverdue,
-      remindersQueued,
     };
   }
 
@@ -111,44 +101,5 @@ export class TaskAutomationService {
       })),
     });
     return result.count;
-  }
-
-  private async queueOverdueReminders(businessId: string) {
-    const overdueTasks = await this.prisma.task.findMany({
-      where: {
-        businessId,
-        deletedAt: null,
-        status: TaskStatus.OVERDUE,
-      },
-      select: {
-        id: true,
-        title: true,
-        dueAt: true,
-        assignedTo: { select: { id: true, name: true, phone: true } },
-      },
-      orderBy: { dueAt: "asc" },
-    });
-    if (!overdueTasks.length) return 0;
-
-    await this.remindersQueue.addBulk(
-      overdueTasks.map((task) => ({
-        name: SEND_WHATSAPP_REMINDER_JOB,
-        data: {
-          businessId,
-          taskId: task.id,
-          taskTitle: task.title,
-          dueAt: task.dueAt.toISOString(),
-          assignedTo: task.assignedTo,
-        },
-        opts: {
-          jobId: "overdue-task-" + task.id,
-          attempts: 3,
-          backoff: { type: "exponential", delay: 60_000 },
-          removeOnComplete: { age: 90 * 24 * 60 * 60, count: 10_000 },
-          removeOnFail: { age: 90 * 24 * 60 * 60, count: 5_000 },
-        },
-      })),
-    );
-    return overdueTasks.length;
   }
 }

@@ -1,4 +1,3 @@
-import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
@@ -27,30 +26,6 @@ import { PrismaModule } from "./prisma/prisma.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const redisUrl = new URL(
-          config.get<string>("REDIS_URL", "redis://localhost:6379"),
-        );
-        const database = redisUrl.pathname.slice(1);
-        return {
-          prefix: "sahayakcrm",
-          connection: {
-            host: redisUrl.hostname,
-            port: Number(redisUrl.port || 6379),
-            ...(redisUrl.username
-              ? { username: decodeURIComponent(redisUrl.username) }
-              : {}),
-            ...(redisUrl.password
-              ? { password: decodeURIComponent(redisUrl.password) }
-              : {}),
-            ...(database ? { db: Number(database) } : {}),
-            ...(redisUrl.protocol === "rediss:" ? { tls: {} } : {}),
-          },
-        };
-      },
-    }),
     PrismaModule,
     AuthModule,
     AuditModule,
