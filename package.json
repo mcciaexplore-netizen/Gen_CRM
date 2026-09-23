@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "build": "pnpm --filter @msme-crm/shared-types build && pnpm --filter @msme-crm/api build && pnpm --filter @msme-crm/web build",
+    "build": "pnpm --filter @msme-crm/shared-types build && pnpm db:generate && pnpm --filter @msme-crm/api build && pnpm --filter @msme-crm/web build",
     "dev": "pnpm --filter @msme-crm/shared-types build && pnpm db:generate && pnpm --parallel --filter @msme-crm/api --filter @msme-crm/web dev",
     "db:deploy": "pnpm --filter @msme-crm/api prisma:migrate:deploy",
     "db:generate": "pnpm --filter @msme-crm/api prisma:generate",
