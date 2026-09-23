@@ -19,6 +19,7 @@ function errorMessage(payload: unknown): string {
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
+  retryAfterRefresh = true,
 ): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type")) {
@@ -31,6 +32,20 @@ export async function apiFetch<T>(
     headers,
   });
 
+  if (
+    response.status === 401 &&
+    retryAfterRefresh &&
+    path !== "/auth/refresh"
+  ) {
+    const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (refreshResponse.ok) return apiFetch<T>(path, init, false);
+  }
+
   const payload = response.status === 204 ? null : await response.json();
   if (!response.ok) throw new ApiError(errorMessage(payload), response.status);
   return payload as T;
@@ -38,10 +53,20 @@ export async function apiFetch<T>(
 
 export async function apiDownload(
   path: string,
+  retryAfterRefresh = true,
 ): Promise<Blob> {
   const response = await fetch(`${API_URL}${path}`, {
     credentials: "include",
   });
+  if (response.status === 401 && retryAfterRefresh) {
+    const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (refreshResponse.ok) return apiDownload(path, false);
+  }
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
     throw new ApiError(errorMessage(payload), response.status);
