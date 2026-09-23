@@ -23,80 +23,8 @@ const REFRESH_COOKIE_MS = 7 * 24 * 60 * 60 * 1000;
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
-  @Public()
-  @Post("signup")
-  async signup(
-    @Body() dto: SignupDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const session = await this.auth.signup(dto);
-    this.setSessionCookies(response, session.accessToken, session.refreshToken);
-    return session.response;
-  }
-
-  @Public()
-  @Post("login")
-  async login(
-    @Body() dto: LoginDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const session = await this.auth.login(dto);
-    this.setSessionCookies(response, session.accessToken, session.refreshToken);
-    return session.response;
-  }
-
-  @Public()
-  @Post("refresh")
-  async refresh(
-    @Body() dto: RefreshTokenDto,
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const token = request.cookies?.crm_refresh_token ?? dto.refreshToken;
-    if (!token) throw new BadRequestException("Refresh token is required");
-    const session = await this.auth.refresh(token);
-    this.setSessionCookies(response, session.accessToken, session.refreshToken);
-    return session.response;
-  }
-
-  @Public()
-  @Post("logout")
-  async logout(
-    @Body() dto: RefreshTokenDto,
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const token = request.cookies?.crm_refresh_token ?? dto.refreshToken;
-    await this.auth.logout(token);
-    response.clearCookie("crm_access_token", { path: "/" });
-    response.clearCookie("crm_refresh_token", { path: "/api/auth" });
-    return { success: true };
-  }
-
   @Get("me")
   me(@CurrentUser() user: JwtPayload) {
     return this.auth.getSession(user.sub, user.businessId);
-  }
-
-  private setSessionCookies(
-    response: Response,
-    accessToken: string,
-    refreshToken: string,
-  ) {
-    const isProd = process.env.NODE_ENV === "production";
-    response.cookie("crm_access_token", accessToken, {
-      httpOnly: true,
-      maxAge: ACCESS_COOKIE_MS,
-      path: "/",
-      sameSite: isProd ? "none" : "lax",
-      secure: isProd,
-    });
-    response.cookie("crm_refresh_token", refreshToken, {
-      httpOnly: true,
-      maxAge: REFRESH_COOKIE_MS,
-      path: "/api/auth",
-      sameSite: isProd ? "none" : "lax",
-      secure: isProd,
-    });
   }
 }
