@@ -14,10 +14,19 @@ async function bootstrap() {
   app.use(cookieParser());
   app.enableCors({
     credentials: true,
-    origin: config
-      .get<string>("WEB_ORIGIN", "http://localhost:3000")
-      .split(",")
-      .map((origin) => origin.trim()),
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const allowedOrigins = config
+        .get<string>("WEB_ORIGIN", "http://localhost:3000")
+        .split(",")
+        .map((o) => o.trim());
+      
+      if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app") || origin.startsWith("http://localhost:")) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
   });
   app.useGlobalPipes(
     new ValidationPipe({
