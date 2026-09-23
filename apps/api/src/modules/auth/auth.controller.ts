@@ -83,20 +83,20 @@ export class AuthController {
     accessToken: string,
     refreshToken: string,
   ) {
-    const secure = process.env.NODE_ENV === "production";
+    const isProd = process.env.NODE_ENV === "production";
     response.cookie("crm_access_token", accessToken, {
       httpOnly: true,
       maxAge: ACCESS_COOKIE_MS,
       path: "/",
-      sameSite: "lax",
-      secure,
+      sameSite: isProd ? "none" : "lax",
+      secure: isProd,
     });
     response.cookie("crm_refresh_token", refreshToken, {
       httpOnly: true,
       maxAge: REFRESH_COOKIE_MS,
       path: "/api/auth",
-      sameSite: "lax",
-      secure,
+      sameSite: isProd ? "none" : "lax",
+      secure: isProd,
     });
   }
 }
