@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "https://gen-crm.onrender.com/api"
+).replace(/\/+$/, "");
 
 export class ApiError extends Error {
   constructor(
@@ -32,9 +34,6 @@ export async function apiFetch<T>(
   init: RequestInit = {},
   retryAfterRefresh = true,
 ): Promise<T> {
-  if (!API_URL) {
-    throw new ApiError("CRM API is not configured. Set NEXT_PUBLIC_API_URL.", 503);
-  }
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -69,9 +68,6 @@ export async function apiDownload(
   path: string,
   retryAfterRefresh = true,
 ): Promise<Blob> {
-  if (!API_URL) {
-    throw new ApiError("CRM API is not configured. Set NEXT_PUBLIC_API_URL.", 503);
-  }
   const response = await request(`${API_URL}${path}`, {
     credentials: "include",
   });
