@@ -166,6 +166,15 @@ The checked-in `PlaceholderGSTComplianceProvider` exercises the IRN/QR workflow 
 
 The invoice form can start from a deal. It copies the latest tenant-scoped quotation line items when a quotation record exists, otherwise it uses the deal title and value as a starting item. The HSN/SAC code must be completed before saving.
 
+## Production frontend configuration
+
+For the Vercel project rooted at `apps/web`, set these build-time environment variables:
+
+- `NEXT_PUBLIC_API_URL` to the Render API URL ending in `/api` (for example, `https://your-crm-api.onrender.com/api`).
+- `NEXT_PUBLIC_EVIDENCE_VAULT_URL` to the Evidence Vault frontend origin (for example, `https://final-document-retrival.vercel.app`, with no path).
+
+The Evidence Vault navigation opens that frontend's `/sso/start` route in a new tab. That app must also have `NEXT_PUBLIC_CRM_API_URL` set to the CRM Render API URL ending in `/api`, so its start page can redirect through the authenticated CRM SSO launch endpoint. Redeploy Vercel after changing either public variable.
+
 ## Useful commands
 
 ```bash

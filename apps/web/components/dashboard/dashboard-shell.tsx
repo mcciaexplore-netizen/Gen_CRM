@@ -28,9 +28,14 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
+const evidenceVaultUrl = (
+  process.env.NEXT_PUBLIC_EVIDENCE_VAULT_URL ||
+  "https://final-document-retrival.vercel.app"
+).replace(/\/+$/, "");
+
 const navigation = [
   { key: "home",       icon: Gauge,               href: "/dashboard", roles: ["OWNER", "ACCOUNTANT"] },
-  { key: "evidenceVault", icon: FileSearch, href: "/api/auth/evidence-vault/launch", roles: ["OWNER", "STAFF", "ACCOUNTANT"] },
+  { key: "evidenceVault", icon: FileSearch, href: `${evidenceVaultUrl}/sso/start`, roles: ["OWNER", "STAFF", "ACCOUNTANT"] },
   { key: "gmail",      icon: Mail,                 href: "/gmail",     roles: ["OWNER", "STAFF"] },
   { key: "contacts",   icon: ContactRound,         href: "/contacts",  roles: ["OWNER", "STAFF"] },
   { key: "broadcasts", icon: Megaphone,            href: "/broadcasts",roles: ["OWNER"] },
@@ -274,6 +279,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             <Link
               key={item.key}
               href={item.href}
+              target={isExternalHref(item.href) ? "_blank" : undefined}
+              rel={isExternalHref(item.href) ? "noopener noreferrer" : undefined}
               className="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-md text-[11px] font-medium transition-colors"
               style={
                 active
@@ -297,6 +304,10 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
+function isExternalHref(href: string): boolean {
+  return href.startsWith("https://") || href.startsWith("http://");
+}
+
 function DesktopNavItem({
   active,
   item,
@@ -307,7 +318,7 @@ function DesktopNavItem({
   label: string;
 }) {
   const Icon = item.icon;
-  const external = item.href.startsWith("https://") || item.href.startsWith("http://");
+  const external = isExternalHref(item.href);
   return (
     <Link
       href={item.href}
