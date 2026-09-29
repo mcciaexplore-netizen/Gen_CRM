@@ -26,6 +26,10 @@ services:
         generateValue: true
       - key: COMMUNICATION_CREDENTIALS_KEY
         generateValue: true
+      - key: EVIDENCE_VAULT_CALLBACK_URL
+        sync: false
+      - key: EVIDENCE_VAULT_SHARED_SECRET
+        sync: false
       - key: WEB_ORIGIN
         value: "https://your-frontend-url.vercel.app" # IMPORTANT: Update this to your deployed frontend URL
 

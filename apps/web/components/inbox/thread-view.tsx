@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { TemplatePanel } from "@/components/inbox/template-panel";
 import { MessageBubble, NoteBubble } from "@/components/inbox/thread-events";
@@ -28,17 +28,24 @@ export function ThreadView({
   onBack,
   onChanged,
   options,
+  senderEmail,
+  smtpConnected,
   thread,
 }: {
   loading: boolean;
   onBack: () => void;
   onChanged: () => void;
   options: ConversationOptionsResponse | null;
+  senderEmail?: string | null;
+  smtpConnected?: boolean;
   thread: ConversationThreadResponse | null;
 }) {
   const t = useTranslations("Inbox");
   const [body, setBody] = useState("");
   const [subject, setSubject] = useState("");
+  const [emailTo, setEmailTo] = useState("");
+  const [emailCc, setEmailCc] = useState("");
+  const [emailBcc, setEmailBcc] = useState("");
   const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -49,6 +56,13 @@ export function ThreadView({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    setEmailTo("");
+    setEmailCc("");
+    setEmailBcc("");
+    setSubject("");
+  }, [thread?.conversation.id]);
 
   const events = useMemo(() => {
     if (!thread) return [];
@@ -80,11 +94,19 @@ export function ThreadView({
         method: "POST",
         body: JSON.stringify({
           body,
-          ...(thread.conversation.channel === "email" ? { subject } : {}),
+          ...(thread.conversation.channel === "email" ? {
+            subject,
+            to: emailTo || thread.conversation.contact.email || "",
+            cc: emailCc,
+            bcc: emailBcc,
+          } : {}),
         }),
       });
       setBody("");
       setSubject("");
+      setEmailTo("");
+      setEmailCc("");
+      setEmailBcc("");
       onChanged();
     } catch (caught) {
       setError(
@@ -229,8 +251,10 @@ export function ThreadView({
             {thread.conversation.contact.name}
           </Link>
           <p className="truncate text-xs text-muted-foreground">
-            {thread.conversation.channel.toUpperCase()} ·{" "}
-            {thread.conversation.contact.phone}
+            {thread.conversation.channel === "email" ? "GMAIL" : thread.conversation.channel.toUpperCase()} ·{" "}
+            {thread.conversation.channel === "email"
+              ? thread.conversation.contact.email ?? thread.conversation.contact.phone
+              : thread.conversation.contact.phone}
           </p>
         </div>
         {options?.canAssign ? (
@@ -339,12 +363,19 @@ export function ThreadView({
               </div>
             ) : null}
             {thread.conversation.channel === "email" ? (
-              <Input
-                onChange={(event) => setSubject(event.target.value)}
-                placeholder={t("subject")}
-                required
-                value={subject}
-              />
+              <div className="grid gap-2">
+                {smtpConnected && senderEmail ? (
+                  <p className="px-1 text-xs text-muted-foreground">From: {senderEmail}</p>
+                ) : (
+                  <p className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                    Add and test your SMTP account to send messages. <Link className="font-semibold underline" href="/gmail/settings">Set up email</Link>
+                  </p>
+                )}
+                <Input aria-label="To" onChange={(event) => setEmailTo(event.target.value)} placeholder="To (comma-separated for bulk mailing)" value={emailTo} />
+                <Input aria-label="Cc" onChange={(event) => setEmailCc(event.target.value)} placeholder="Cc (optional; comma-separated)" value={emailCc} />
+                <Input aria-label="Bcc" onChange={(event) => setEmailBcc(event.target.value)} placeholder="Bcc (optional; comma-separated)" value={emailBcc} />
+                <Input onChange={(event) => setSubject(event.target.value)} placeholder={t("subject")} required value={subject} />
+              </div>
             ) : null}
             <form className="flex items-end gap-2" onSubmit={sendText}>
               <Button
@@ -378,7 +409,7 @@ export function ThreadView({
               />
               <Button
                 aria-label="Send message"
-                disabled={sending || !body.trim()}
+                disabled={sending || !body.trim() || (thread.conversation.channel === "email" && !smtpConnected)}
                 size="icon"
                 type="submit"
               >

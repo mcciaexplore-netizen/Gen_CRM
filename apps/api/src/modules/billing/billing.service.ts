@@ -58,7 +58,21 @@ const invoiceSelect = {
     select: { id: true, name: true, phone: true, email: true },
   },
   deal: { select: { id: true, title: true } },
-  business: { select: { id: true, name: true, eInvoiceApplicable: true } },
+  business: {
+    select: {
+      id: true,
+      name: true,
+      eInvoiceApplicable: true,
+      gstin: true,
+      stateCode: true,
+      users: {
+        where: { role: "OWNER", deletedAt: null },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { email: true, phone: true },
+      },
+    },
+  },
   createdBy: { select: { id: true, name: true } },
   payments: {
     where: { deletedAt: null },
@@ -151,7 +165,18 @@ export class BillingService {
     const [business, contacts, deals] = await Promise.all([
       this.prisma.business.findFirst({
         where: { id: businessId, deletedAt: null },
-        select: { eInvoiceApplicable: true },
+        select: {
+          name: true,
+          eInvoiceApplicable: true,
+          gstin: true,
+          stateCode: true,
+          users: {
+            where: { role: "OWNER", deletedAt: null },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { email: true, phone: true },
+          },
+        },
       }),
       this.prisma.contact.findMany({
         where: { businessId, deletedAt: null },
@@ -182,6 +207,13 @@ export class BillingService {
     if (!business) throw new NotFoundException("Business not found");
     return {
       eInvoiceApplicable: business.eInvoiceApplicable,
+      company: {
+        name: business.name,
+        email: business.users[0]?.email ?? null,
+        phone: business.users[0]?.phone ?? null,
+        gstin: business.gstin,
+        stateCode: business.stateCode,
+      },
       contacts,
       deals: deals.map((deal) => ({
         id: deal.id,
@@ -687,7 +719,12 @@ export class BillingService {
     const invoice = await this.requireInvoice(businessId, invoiceId);
     const detail = this.toDetail(invoice);
     const buffer = await this.invoicePdf.generate({
+      invoiceId: detail.id,
       businessName: invoice.business.name,
+      businessEmail: invoice.business.users[0]?.email ?? null,
+      businessPhone: invoice.business.users[0]?.phone ?? null,
+      businessGstin: invoice.business.gstin,
+      businessStateCode: invoice.business.stateCode,
       invoiceNumber: detail.invoiceNumber,
       status: detail.status,
       issuedAt: detail.issuedAt,
@@ -696,6 +733,7 @@ export class BillingService {
       contact: invoice.contact,
       lineItems: detail.lineItems,
       subtotal: detail.subtotal,
+      discountTotal: detail.discountTotal,
       taxTotal: detail.taxTotal,
       grandTotal: detail.grandTotal,
       amountPaid: detail.amountPaid,
@@ -769,23 +807,41 @@ export class BillingService {
       hsnSacCode: item.hsnSacCode.trim().toUpperCase(),
       quantity: item.quantity,
       rate: item.rate,
+      discountPercent: item.discountPercent ?? 0,
       taxPercent: item.taxPercent,
     }));
     let subtotal = new Prisma.Decimal(0);
+    let discountTotal = new Prisma.Decimal(0);
     let taxTotal = new Prisma.Decimal(0);
     for (const item of lineItems) {
       const base = new Prisma.Decimal(item.quantity)
         .mul(item.rate)
         .toDecimalPlaces(2);
-      const tax = base.mul(item.taxPercent).div(100).toDecimalPlaces(2);
+      const discount = base
+        .mul(item.discountPercent ?? 0)
+        .div(100)
+        .toDecimalPlaces(2);
+      const taxable = base.sub(discount).toDecimalPlaces(2);
+      const tax = taxable
+        .mul(item.taxPercent)
+        .div(100)
+        .toDecimalPlaces(2);
+      item.discountAmount = Number(discount);
+      item.taxableAmount = Number(taxable);
+      item.lineTotal = Number(taxable.add(tax).toDecimalPlaces(2));
       subtotal = subtotal.add(base);
+      discountTotal = discountTotal.add(discount);
       taxTotal = taxTotal.add(tax);
     }
     return {
       lineItems,
       subtotal: subtotal.toDecimalPlaces(2),
+      discountTotal: discountTotal.toDecimalPlaces(2),
       taxTotal: taxTotal.toDecimalPlaces(2),
-      grandTotal: subtotal.add(taxTotal).toDecimalPlaces(2),
+      grandTotal: subtotal
+        .sub(discountTotal)
+        .add(taxTotal)
+        .toDecimalPlaces(2),
     };
   }
 
@@ -818,6 +874,14 @@ export class BillingService {
           hsnSacCode: item.hsnSacCode,
           quantity: item.quantity,
           rate: item.rate,
+          discountPercent:
+            typeof item.discountPercent === "number" ? item.discountPercent : 0,
+          discountAmount:
+            typeof item.discountAmount === "number" ? item.discountAmount : undefined,
+          taxableAmount:
+            typeof item.taxableAmount === "number" ? item.taxableAmount : undefined,
+          lineTotal:
+            typeof item.lineTotal === "number" ? item.lineTotal : undefined,
           taxPercent: item.taxPercent,
         },
       ];
@@ -835,6 +899,10 @@ export class BillingService {
       0,
     );
     const grandTotal = Number(invoice.grandTotal);
+    const discountTotal = this.lineItems(invoice.lineItems).reduce(
+      (sum, item) => sum + (item.discountAmount ?? 0),
+      0,
+    );
     return {
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
@@ -843,9 +911,11 @@ export class BillingService {
         id: invoice.contact.id,
         name: invoice.contact.name,
         phone: invoice.contact.phone,
+        email: invoice.contact.email,
       },
       deal: invoice.deal,
       subtotal: Number(invoice.subtotal),
+      discountTotal: this.round(discountTotal),
       taxTotal: Number(invoice.taxTotal),
       grandTotal,
       amountPaid: this.round(amountPaid),
@@ -864,6 +934,13 @@ export class BillingService {
   private toDetail(invoice: InvoiceRecord): InvoiceDetail {
     return {
       ...this.toSummary(invoice),
+      company: {
+        name: invoice.business.name,
+        email: invoice.business.users[0]?.email ?? null,
+        phone: invoice.business.users[0]?.phone ?? null,
+        gstin: invoice.business.gstin,
+        stateCode: invoice.business.stateCode,
+      },
       lineItems: this.lineItems(invoice.lineItems),
       irn: invoice.irn,
       qrCodeUrl: invoice.qrCodeUrl,

@@ -14,7 +14,7 @@ export function ContactConversations({ contactId }: { contactId: string }) {
 
   useEffect(() => {
     apiFetch<ConversationSummary[]>(
-      "/conversations?contactId=" + encodeURIComponent(contactId),
+      "/conversations?contactId=" + encodeURIComponent(contactId) + "&channel=email",
     )
       .then(setConversations)
       .catch((caught) =>
@@ -52,10 +52,10 @@ export function ContactConversations({ contactId }: { contactId: string }) {
         <MessageCircle className="mx-auto h-7 w-7 text-slate-400" />
         <h2 className="mt-3 font-semibold">No conversation yet</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Their first inbound message will create a shared conversation here.
+          Open email to write to this contact or review their email thread.
         </p>
         <Button asChild className="mt-4" variant="outline">
-          <Link href={"/inbox?contactId=" + contactId}>Open team inbox</Link>
+          <Link href={"/gmail?contactId=" + contactId}>Open email</Link>
         </Button>
       </div>
     );
@@ -92,7 +92,7 @@ export function ContactConversations({ contactId }: { contactId: string }) {
             </p>
           </div>
           <Button asChild className="w-full sm:w-auto">
-            <Link href={"/inbox?conversationId=" + conversation.id}>
+            <Link href={"/gmail?conversationId=" + conversation.id}>
               Open conversation <MoveRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

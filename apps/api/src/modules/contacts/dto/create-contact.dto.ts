@@ -14,6 +14,7 @@ import {
   MaxLength,
   Min,
   IsUUID,
+  ValidateIf,
 } from "class-validator";
 import { CONTACT_SOURCES, type ContactSource } from "@msme-crm/shared-types";
 
@@ -35,7 +36,7 @@ export class CreateContactDto {
     const email = value?.trim().toLowerCase();
     return email || undefined;
   })
-  @IsOptional()
+  @ValidateIf((contact: CreateContactDto) => contact.email !== undefined || contact.source === "gmail")
   @IsEmail()
   @MaxLength(254)
   email?: string;

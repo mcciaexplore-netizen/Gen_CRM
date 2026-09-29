@@ -3,12 +3,13 @@
 import type { AuthResponse, UserRole } from "@msme-crm/shared-types";
 import {
   ContactRound,
+  FileSearch,
   Gauge,
   ListChecks,
   Loader2,
   LogOut,
+  Mail,
   Menu,
-  MessageCircle,
   Megaphone,
   PanelsTopLeft,
   ReceiptIndianRupee,
@@ -29,7 +30,8 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { key: "home",       icon: Gauge,               href: "/dashboard", roles: ["OWNER", "ACCOUNTANT"] },
-  { key: "inbox",      icon: MessageCircle,        href: "/inbox",     roles: ["OWNER", "STAFF"] },
+  { key: "evidenceVault", icon: FileSearch, href: "/api/auth/evidence-vault/launch", roles: ["OWNER", "STAFF", "ACCOUNTANT"] },
+  { key: "gmail",      icon: Mail,                 href: "/gmail",     roles: ["OWNER", "STAFF"] },
   { key: "contacts",   icon: ContactRound,         href: "/contacts",  roles: ["OWNER", "STAFF"] },
   { key: "broadcasts", icon: Megaphone,            href: "/broadcasts",roles: ["OWNER"] },
   { key: "pipeline",   icon: PanelsTopLeft,        href: "/pipeline",  roles: ["OWNER", "STAFF"] },
@@ -89,6 +91,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const mobileNavigation = visibleNavigation.slice(0, 5);
   const sectionName = pathname.startsWith("/contacts")
     ? t("contacts")
+    : pathname.startsWith("/gmail")
+      ? t("gmail")
     : pathname.startsWith("/inbox")
       ? t("teamInbox")
       : pathname.startsWith("/pipeline")
@@ -303,9 +307,12 @@ function DesktopNavItem({
   label: string;
 }) {
   const Icon = item.icon;
+  const external = item.href.startsWith("https://") || item.href.startsWith("http://");
   return (
     <Link
       href={item.href}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener noreferrer" : undefined}
       className={cn(
         "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-all duration-150",
         active

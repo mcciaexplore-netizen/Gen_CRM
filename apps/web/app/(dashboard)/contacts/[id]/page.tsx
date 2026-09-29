@@ -139,14 +139,17 @@ export default function ContactDetailPage({
               </a>
             </Button>
             <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-              <a
-                href={whatsappHref(contact.phone)}
-                rel="noreferrer"
-                target="_blank"
-              >
+              <a href={whatsappHref(contact.phone)} rel="noreferrer" target="_blank">
                 <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
               </a>
             </Button>
+            {contact.email ? (
+              <Button asChild variant="outline">
+                <Link href={`/gmail?contactId=${encodeURIComponent(contact.id)}`}>
+                  <Mail className="mr-2 h-4 w-4" /> Email conversation
+                </Link>
+              </Button>
+            ) : null}
             <Button asChild className="col-span-2" variant="outline">
               <Link href={"/contacts/" + contact.id + "/edit"}>
                 <Pencil className="mr-2 h-4 w-4" /> Edit contact

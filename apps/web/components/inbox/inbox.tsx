@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export function Inbox() {
+export function Inbox({ channelFilter }: { channelFilter?: "email" } = {}) {
   const t = useTranslations("Inbox");
   const searchParameters = useSearchParams();
   const requestedConversationId = searchParameters.get("conversationId");
@@ -35,9 +35,13 @@ export function Inbox() {
   const [loadingThread, setLoadingThread] = useState(false);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
-  const [contactId, setContactId] = useState("");
-  const [channel, setChannel] =
-    useState<Exclude<ConversationChannel, "call">>("whatsapp");
+  const [contactId, setContactId] = useState(requestedContactId ?? "");
+  const [channel, setChannel] = useState<Exclude<ConversationChannel, "call">>(
+    channelFilter ?? "whatsapp",
+  );
+  const [smtpConnected, setSmtpConnected] = useState(false);
+  const [emailSender, setEmailSender] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState("");
 
   async function createConversation() {
     if (!contactId) return;
@@ -65,15 +69,19 @@ export function Inbox() {
 
   const loadConversations = useCallback(async () => {
     const parameters = new URLSearchParams({ limit: "200" });
+    if (channelFilter) parameters.set("channel", channelFilter);
     if (search.trim()) parameters.set("search", search.trim());
     if (requestedContactId) parameters.set("contactId", requestedContactId);
     try {
       const result = await apiFetch<ConversationSummary[]>(
         "/conversations?" + parameters.toString(),
       );
-      setConversations(result);
+      const visible = channelFilter
+        ? result.filter((item) => item.channel === channelFilter)
+        : result;
+      setConversations(visible);
       if (!selectedId && (requestedContactId || requestedConversationId)) {
-        setSelectedId(requestedConversationId || result[0]?.id || null);
+        setSelectedId(requestedConversationId || visible[0]?.id || null);
       }
     } catch (caught) {
       setError(
@@ -82,7 +90,7 @@ export function Inbox() {
     } finally {
       setLoadingList(false);
     }
-  }, [requestedContactId, requestedConversationId, search, selectedId]);
+  }, [channelFilter, requestedContactId, requestedConversationId, search, selectedId]);
 
   const loadThread = useCallback(async (conversationId: string) => {
     try {
@@ -122,6 +130,17 @@ export function Inbox() {
   }, []);
 
   useEffect(() => {
+    if (!channelFilter) return;
+    apiFetch<{ configured: boolean; senderEmail: string }>("/gmail/smtp-settings")
+      .then((result) => {
+        setSmtpConnected(result.configured);
+        setEmailSender(result.senderEmail || null);
+        if (!result.configured) setEmailNotice("Connect an SMTP sender in Email settings to send messages.");
+      })
+      .catch((caught) => setEmailNotice(caught instanceof Error ? caught.message : "Unable to check SMTP connection"));
+  }, [channelFilter]);
+
+  useEffect(() => {
     if (!selectedId) {
       setThread(null);
       return;
@@ -144,18 +163,19 @@ export function Inbox() {
     <section>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{channelFilter ? "Email conversations" : t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{channelFilter ? "Send and track customer email using your SMTP account." : t("subtitle")}</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={() => setCreateOpen((value) => !value)}
-            variant="outline"
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            {t("newConversation")}
+          {channelFilter ? (
+            <Button asChild variant="outline">
+              <Link href="/gmail/settings">{smtpConnected ? "Email settings" : "Set up SMTP"}</Link>
+            </Button>
+          ) : null}
+          <Button onClick={() => setCreateOpen((value) => !value)} variant="outline">
+            <Plus className="mr-1.5 h-4 w-4" />{channelFilter ? "New email" : t("newConversation")}
           </Button>
-          {options?.canAssign ? (
+          {options?.canAssign && !channelFilter ? (
             <Button asChild size="icon" variant="outline">
               <Link aria-label="Channel settings" href="/inbox/channels">
                 <Settings2 className="h-5 w-5" />
@@ -164,6 +184,8 @@ export function Inbox() {
           ) : null}
         </div>
       </div>
+
+      {channelFilter && emailNotice ? <p className="mb-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900" role="status">{emailNotice}</p> : null}
 
       {error ? (
         <p
@@ -186,31 +208,31 @@ export function Inbox() {
                   onChange={(event) => setContactId(event.target.value)}
                   value={contactId}
                 >
-                  <option value="">Choose contact</option>
-                  {options?.contacts.map((contact) => (
+                  <option value="">{channelFilter ? "Choose email contact" : "Choose contact"}</option>
+                  {options?.contacts.filter((contact) => !channelFilter || Boolean(contact.email)).map((contact) => (
                     <option key={contact.id} value={contact.id}>
                       {contact.name} · {contact.phone}
                     </option>
                   ))}
                 </select>
-                <select
-                  className="h-11 w-full rounded-md border bg-white px-3 text-sm"
-                  onChange={(event) =>
-                    setChannel(event.target.value as typeof channel)
-                  }
-                  value={channel}
-                >
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="sms">SMS</option>
-                  <option value="email">Email</option>
-                </select>
+                {!channelFilter ? (
+                  <select
+                    className="h-11 w-full rounded-md border bg-white px-3 text-sm"
+                    onChange={(event) => setChannel(event.target.value as typeof channel)}
+                    value={channel}
+                  >
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="sms">SMS</option>
+                    <option value="email">Email</option>
+                  </select>
+                ) : null}
                 <Button
                   className="w-full"
                   disabled={!contactId}
                   onClick={() => void createConversation()}
                   size="sm"
                 >
-                  Start conversation
+                  {channelFilter ? "Start email" : "Start conversation"}
                 </Button>
               </div>
             ) : null}
@@ -264,8 +286,10 @@ export function Inbox() {
                 void loadThread(selectedId);
                 void loadConversations();
               }}
-              options={options}
-              thread={thread}
+                options={options}
+                senderEmail={emailSender}
+                smtpConnected={smtpConnected}
+                thread={thread}
             />
           ) : (
             <div className="grid h-full min-h-[36rem] place-items-center p-8 text-center">

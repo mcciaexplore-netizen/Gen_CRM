@@ -1,6 +1,7 @@
 import { Transform, Type } from "class-transformer";
 import {
   IsInt,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
@@ -10,6 +11,10 @@ import {
 } from "class-validator";
 
 export class ListConversationsQueryDto {
+  @IsOptional()
+  @IsIn(["whatsapp", "sms", "email", "call"])
+  channel?: "whatsapp" | "sms" | "email" | "call";
+
   @IsOptional()
   @Transform(({ value }: { value: string }) => value.trim())
   @IsString()

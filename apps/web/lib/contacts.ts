@@ -1,6 +1,11 @@
 import type { ContactSource } from "@msme-crm/shared-types";
 
+// Keep the currently offered source choices local to the web app so the
+// contacts UI does not depend on a freshly rebuilt shared-types runtime bundle.
+export const CONTACT_SOURCE_OPTIONS: ContactSource[] = ["gmail"];
+
 export const contactSourceLabels: Record<ContactSource, string> = {
+  gmail: "Gmail",
   whatsapp: "WhatsApp",
   website: "Website",
   marketplace: "Marketplace",

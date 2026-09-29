@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -46,6 +47,7 @@ const contactSelect = {
 type ContactRecord = Prisma.ContactGetPayload<{ select: typeof contactSelect }>;
 
 const sourceToPrisma: Record<ContactSource, PrismaContactSource> = {
+  gmail: PrismaContactSource.GMAIL,
   whatsapp: PrismaContactSource.WHATSAPP,
   website: PrismaContactSource.WEBSITE,
   marketplace: PrismaContactSource.MARKETPLACE,
@@ -55,6 +57,7 @@ const sourceToPrisma: Record<ContactSource, PrismaContactSource> = {
 };
 
 const sourceFromPrisma: Record<PrismaContactSource, ContactSource> = {
+  GMAIL: "gmail",
   WHATSAPP: "whatsapp",
   WEBSITE: "website",
   MARKETPLACE: "marketplace",
@@ -198,9 +201,14 @@ export class ContactsService {
         deletedAt: null,
         ...this.assignmentScope(actor),
       },
-      select: { id: true, normalizedPhone: true },
+      select: { id: true, normalizedPhone: true, source: true, email: true },
     });
     if (!existing) throw new NotFoundException("Contact not found");
+    const nextSource = dto.source ? sourceToPrisma[dto.source] : existing.source;
+    const nextEmail = dto.email !== undefined ? dto.email : existing.email;
+    if (nextSource === PrismaContactSource.GMAIL && !nextEmail) {
+      throw new BadRequestException("Add the contact's email address before saving a Gmail contact");
+    }
     if (
       actor.role === "STAFF" &&
       dto.assignedToId &&

@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export class ApiError extends Error {
   constructor(
@@ -16,17 +16,31 @@ function errorMessage(payload: unknown): string {
   return typeof message === "string" ? message : "Something went wrong";
 }
 
+async function request(input: RequestInfo | URL, init?: RequestInit) {
+  try {
+    return await fetch(input, init);
+  } catch {
+    throw new ApiError(
+      "CRM server is unavailable. Check that the API server and database are running, then try again.",
+      0,
+    );
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
   retryAfterRefresh = true,
 ): Promise<T> {
+  if (!API_URL) {
+    throw new ApiError("CRM API is not configured. Set NEXT_PUBLIC_API_URL.", 503);
+  }
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await request(`${API_URL}${path}`, {
     ...init,
     credentials: "include",
     headers,
@@ -37,7 +51,7 @@ export async function apiFetch<T>(
     retryAfterRefresh &&
     path !== "/auth/refresh"
   ) {
-    const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+    const refreshResponse = await request(`${API_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -55,11 +69,14 @@ export async function apiDownload(
   path: string,
   retryAfterRefresh = true,
 ): Promise<Blob> {
-  const response = await fetch(`${API_URL}${path}`, {
+  if (!API_URL) {
+    throw new ApiError("CRM API is not configured. Set NEXT_PUBLIC_API_URL.", 503);
+  }
+  const response = await request(`${API_URL}${path}`, {
     credentials: "include",
   });
   if (response.status === 401 && retryAfterRefresh) {
-    const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+    const refreshResponse = await request(`${API_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

@@ -8,7 +8,9 @@
   },
   "Navigation": {
     "home": "Home",
+    "evidenceVault": "Evidence Vault",
     "inbox": "Inbox",
+    "gmail": "Email",
     "contacts": "Contacts",
     "broadcasts": "Broadcasts",
     "pipeline": "Pipeline",

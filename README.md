@@ -115,6 +115,16 @@ Open:
 
 The intended flow is **signup → three-step setup → dashboard**. Use `http://localhost` consistently rather than mixing it with `127.0.0.1`, because authentication uses HTTP-only cookies.
 
+### Local mode without Docker or Neon
+
+If Docker is unavailable or the configured remote database cannot be reached, start the persistent local PostgreSQL-compatible database and API with:
+
+```bash
+pnpm --filter @msme-crm/api dev:local
+```
+
+Then start the web app in another terminal with `pnpm --filter @msme-crm/web dev`. Local data is stored under `apps/api/.local-db` and is separate from Neon; create a local account through **Create an account** before signing in.
+
 ## 360dialog setup
 
 The inbox uses the official 360dialog WhatsApp Business API. PostgreSQL and Redis must be running before webhook events can be processed.
