@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CONTACT_SOURCES,
   type ContactDuplicateWarning,
   type ContactInput,
   type ContactMutationResponse,
@@ -23,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
-import { contactSourceLabels } from "@/lib/contacts";
+import { CONTACT_SOURCE_OPTIONS, contactSourceLabels } from "@/lib/contacts";
 
 interface CustomFieldRow {
   id: number;
@@ -240,13 +239,14 @@ export function ContactForm({
                 value={phone}
               />
             </Field>
-            <Field id="email" label="Email (optional)">
+            <Field id="email" label={source === "gmail" ? "Email address" : "Email (optional)"}>
               <Input
                 id="email"
                 autoComplete="email"
                 inputMode="email"
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="priya@example.com"
+                required={source === "gmail"}
                 type="email"
                 value={email}
               />
@@ -260,7 +260,12 @@ export function ContactForm({
                 }
                 value={source}
               >
-                {CONTACT_SOURCES.map((option) => (
+                {contact && !CONTACT_SOURCE_OPTIONS.includes(contact.source as (typeof CONTACT_SOURCE_OPTIONS)[number]) ? (
+                  <option value={contact.source} key={contact.source}>
+                    {contactSourceLabels[contact.source]} (existing)
+                  </option>
+                ) : null}
+                {CONTACT_SOURCE_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {contactSourceLabels[option]}
                   </option>

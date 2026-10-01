@@ -3,7 +3,10 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
+  HttpCode,
   Post,
+  Query,
   Req,
   Res,
 } from "@nestjs/common";
@@ -76,6 +79,31 @@ export class AuthController {
   @Get("me")
   me(@CurrentUser() user: JwtPayload) {
     return this.auth.getSession(user.sub, user.businessId);
+  }
+
+  @Get("evidence-vault/launch")
+  async launchEvidenceVault(
+    @CurrentUser() user: JwtPayload,
+    @Query("state") state: string,
+    @Res() response: Response,
+  ) {
+    const destination = await this.auth.createEvidenceVaultLaunchUrl(
+      user.sub,
+      user.businessId,
+      state,
+    );
+    response.setHeader("Cache-Control", "no-store");
+    return response.redirect(302, destination);
+  }
+
+  @Public()
+  @HttpCode(200)
+  @Post("evidence-vault/exchange")
+  exchangeEvidenceVaultCode(
+    @Body("code") code: string,
+    @Headers("authorization") authorization: string | undefined,
+  ) {
+    return this.auth.redeemEvidenceVaultCode(code, authorization);
   }
 
   private setSessionCookies(

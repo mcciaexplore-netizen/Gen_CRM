@@ -175,9 +175,10 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
         <CardContent className="p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
+              <p className="text-xs font-semibold uppercase text-emerald-800">Billing number</p>
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-bold tracking-tight">
-                  {invoice.invoiceNumber ?? "Draft invoice"}
+                  {invoice.invoiceNumber ?? `DRAFT-${invoice.id.slice(0, 8).toUpperCase()}`}
                 </h1>
                 <StatusBadge status={invoice.status} />
               </div>
@@ -247,13 +248,22 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             </p>
           ) : null}
 
-          <div className="mt-6 grid gap-4 border-t pt-5 sm:grid-cols-3">
-            <Info label="Customer" value={invoice.contact.name} />
-            <Info label="Phone" value={invoice.contact.phone} />
-            <Info
-              label="Linked deal"
-              value={invoice.deal?.title ?? "Not linked"}
-            />
+          <div className="mt-6 grid gap-5 border-y py-5 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase text-emerald-800">From</p>
+              <p className="mt-1 font-semibold text-slate-950">{invoice.company.name}</p>
+              {invoice.company.email ? <p className="text-sm text-slate-600">{invoice.company.email}</p> : null}
+              {invoice.company.phone ? <p className="text-sm text-slate-600">{invoice.company.phone}</p> : null}
+              {invoice.company.gstin ? <p className="text-sm text-slate-600">GSTIN {invoice.company.gstin}</p> : null}
+              {invoice.company.stateCode ? <p className="text-sm text-slate-600">State code {invoice.company.stateCode}</p> : null}
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-emerald-800">Bill to</p>
+              <p className="mt-1 font-semibold text-slate-950">{invoice.contact.name}</p>
+              <p className="text-sm text-slate-600">{invoice.contact.phone}</p>
+              {invoice.contact.email ? <p className="text-sm text-slate-600">{invoice.contact.email}</p> : null}
+              <p className="mt-2 text-sm text-slate-500">Linked deal: {invoice.deal?.title ?? "Not linked"}</p>
+            </div>
           </div>
 
           <div className="mt-6 overflow-x-auto rounded-lg border">
@@ -264,6 +274,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
                   <th className="px-4 py-3">HSN/SAC</th>
                   <th className="px-4 py-3 text-right">Qty</th>
                   <th className="px-4 py-3 text-right">Rate</th>
+                  <th className="px-4 py-3 text-right">Discount</th>
                   <th className="px-4 py-3 text-right">GST</th>
                   <th className="px-4 py-3 text-right">Amount</th>
                 </tr>
@@ -271,7 +282,9 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
               <tbody className="divide-y">
                 {invoice.lineItems.map((item, index) => {
                   const base = item.quantity * item.rate;
-                  const total = base + (base * item.taxPercent) / 100;
+                  const discountAmount = item.discountAmount ?? base * (item.discountPercent ?? 0) / 100;
+                  const taxableAmount = item.taxableAmount ?? base - discountAmount;
+                  const total = item.lineTotal ?? taxableAmount + (taxableAmount * item.taxPercent) / 100;
                   return (
                     <tr key={index}>
                       <td className="px-4 py-3 font-medium">
@@ -281,6 +294,10 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
                       <td className="px-4 py-3 text-right">{item.quantity}</td>
                       <td className="px-4 py-3 text-right">
                         {formatInr(item.rate)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {item.discountPercent ?? 0}%
+                        {discountAmount > 0 ? <span className="block text-xs text-muted-foreground">-{formatInr(discountAmount)}</span> : null}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {item.taxPercent}%
@@ -297,6 +314,8 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
 
           <div className="ml-auto mt-5 max-w-sm space-y-2 rounded-lg bg-emerald-50 p-4">
             <MoneyRow label="Subtotal" value={invoice.subtotal} />
+            {invoice.discountTotal > 0 ? <MoneyRow label="Discount" value={-invoice.discountTotal} /> : null}
+            <MoneyRow label="Taxable value" value={invoice.subtotal - invoice.discountTotal} />
             <MoneyRow label="GST" value={invoice.taxTotal} />
             <MoneyRow label="Grand total" strong value={invoice.grandTotal} />
             <MoneyRow label="Paid" value={invoice.amountPaid} />

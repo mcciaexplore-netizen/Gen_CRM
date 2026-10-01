@@ -115,6 +115,16 @@ Open:
 
 The intended flow is **signup → three-step setup → dashboard**. Use `http://localhost` consistently rather than mixing it with `127.0.0.1`, because authentication uses HTTP-only cookies.
 
+### Local mode without Docker or Neon
+
+If Docker is unavailable or the configured remote database cannot be reached, start the persistent local PostgreSQL-compatible database and API with:
+
+```bash
+pnpm --filter @msme-crm/api dev:local
+```
+
+Then start the web app in another terminal with `pnpm --filter @msme-crm/web dev`. Local data is stored under `apps/api/.local-db` and is separate from Neon; create a local account through **Create an account** before signing in.
+
 ## 360dialog setup
 
 The inbox uses the official 360dialog WhatsApp Business API. PostgreSQL and Redis must be running before webhook events can be processed.
@@ -155,6 +165,15 @@ Invoices begin as editable drafts without a number. Selecting **Issue invoice** 
 The checked-in `PlaceholderGSTComplianceProvider` exercises the IRN/QR workflow without calling GSTN or a paid GSP. Its output is intentionally non-production. Replace the provider binding in `apps/api/src/modules/billing/billing.module.ts` with a real GSP implementation before using e-invoicing in production; billing business logic does not need to change.
 
 The invoice form can start from a deal. It copies the latest tenant-scoped quotation line items when a quotation record exists, otherwise it uses the deal title and value as a starting item. The HSN/SAC code must be completed before saving.
+
+## Production frontend configuration
+
+For the Vercel project rooted at `apps/web`, set these build-time environment variables:
+
+- `NEXT_PUBLIC_API_URL` to the Render API URL ending in `/api` (for example, `https://your-crm-api.onrender.com/api`).
+- `NEXT_PUBLIC_EVIDENCE_VAULT_URL` to the Evidence Vault frontend origin (for example, `https://final-document-retrival.vercel.app`, with no path).
+
+The Evidence Vault navigation opens that frontend's `/sso/start` route in a new tab. That app must also have `NEXT_PUBLIC_CRM_API_URL` set to the CRM Render API URL ending in `/api`, so its start page can redirect through the authenticated CRM SSO launch endpoint. Redeploy Vercel after changing either public variable.
 
 ## Useful commands
 

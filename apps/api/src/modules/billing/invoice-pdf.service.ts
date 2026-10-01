@@ -7,7 +7,12 @@ import type {
 import PDFDocument from "pdfkit";
 
 export interface InvoicePdfData {
+  invoiceId: string;
   businessName: string;
+  businessEmail: string | null;
+  businessPhone: string | null;
+  businessGstin: string | null;
+  businessStateCode: string | null;
   invoiceNumber: string | null;
   status: InvoiceStatus;
   issuedAt: string | null;
@@ -20,6 +25,7 @@ export interface InvoicePdfData {
   };
   lineItems: InvoiceLineItem[];
   subtotal: number;
+  discountTotal: number;
   taxTotal: number;
   grandTotal: number;
   amountPaid: number;
@@ -85,9 +91,23 @@ export class InvoicePdfService {
       .text(invoice.businessName, 40, 30, { width: 315, height: 52 });
     document
       .font("Helvetica")
-      .fontSize(10)
+      .fontSize(8.5)
       .fillColor("#d1fae5")
-      .text("GST TAX INVOICE", 40, 94);
+      .text(
+        [invoice.businessEmail, invoice.businessPhone]
+          .filter(Boolean)
+          .join("  ·  ") || "GST TAX INVOICE",
+        40,
+        78,
+        { width: 315, lineBreak: false },
+      );
+    const taxIdentity = [
+      invoice.businessGstin ? `GSTIN ${invoice.businessGstin}` : null,
+      invoice.businessStateCode ? `State ${invoice.businessStateCode}` : null,
+    ].filter(Boolean).join("  ·  ");
+    if (taxIdentity) {
+      document.fontSize(8).text(taxIdentity, 40, 96, { width: 315 });
+    }
     document
       .font("Helvetica-Bold")
       .fontSize(16)
@@ -126,6 +146,13 @@ export class InvoicePdfService {
       .text(invoice.contact.email ?? "", 40, y + 53);
 
     const issueDate = invoice.issuedAt ?? invoice.createdAt;
+    this.labelValue(
+      document,
+      "Bill number",
+      invoice.invoiceNumber ?? `DRAFT-${invoice.invoiceId.slice(0, 8).toUpperCase()}`,
+      368,
+      y - 34,
+    );
     this.labelValue(document, "Invoice date", this.date(issueDate), 368, y);
     this.labelValue(
       document,
@@ -141,12 +168,13 @@ export class InvoicePdfService {
     document.save().rect(40, y, 515, 26).fill("#e2e8f0").restore();
     const headings = [
       ["#", 45, 22, "left"],
-      ["Description", 67, 165, "left"],
-      ["HSN/SAC", 232, 64, "left"],
-      ["Qty", 296, 42, "right"],
-      ["Rate", 338, 75, "right"],
-      ["GST", 413, 52, "right"],
-      ["Amount", 465, 84, "right"],
+      ["Description", 67, 140, "left"],
+      ["HSN/SAC", 207, 57, "left"],
+      ["Qty", 264, 38, "right"],
+      ["Rate", 302, 65, "right"],
+      ["Disc %", 367, 52, "right"],
+      ["GST", 419, 48, "right"],
+      ["Amount", 467, 84, "right"],
     ] as const;
     document.font("Helvetica-Bold").fontSize(8).fillColor("#334155");
     headings.forEach(([text, x, width, align]) =>
@@ -163,28 +191,34 @@ export class InvoicePdfService {
     height: number,
   ) {
     const base = item.quantity * item.rate;
-    const total = base + (base * item.taxPercent) / 100;
+    const discountAmount = item.discountAmount ?? base * (item.discountPercent ?? 0) / 100;
+    const taxableAmount = item.taxableAmount ?? base - discountAmount;
+    const total = item.lineTotal ?? taxableAmount + (taxableAmount * item.taxPercent) / 100;
     if (index % 2 === 0) {
       document.save().rect(40, y, 515, height).fill("#f8fafc").restore();
     }
     document.font("Helvetica").fontSize(8.5).fillColor("#0f172a");
     document.text(String(index), 45, y + 9, { width: 22 });
-    document.text(item.description, 67, y + 9, { width: 160 });
-    document.text(item.hsnSacCode, 232, y + 9, { width: 60 });
-    document.text(this.number(item.quantity), 296, y + 9, {
-      width: 38,
+    document.text(item.description, 67, y + 9, { width: 135 });
+    document.text(item.hsnSacCode, 207, y + 9, { width: 54 });
+    document.text(this.number(item.quantity), 264, y + 9, {
+      width: 34,
       align: "right",
     });
-    document.text(this.money(item.rate), 338, y + 9, {
-      width: 71,
+    document.text(this.money(item.rate), 302, y + 9, {
+      width: 60,
       align: "right",
     });
-    document.text(this.number(item.taxPercent) + "%", 413, y + 9, {
+    document.text(this.number(item.discountPercent ?? 0) + "%", 367, y + 9, {
       width: 48,
       align: "right",
     });
-    document.text(this.money(total), 465, y + 9, {
-      width: 84,
+    document.text(this.number(item.taxPercent) + "%", 419, y + 9, {
+      width: 44,
+      align: "right",
+    });
+    document.text(this.money(total), 467, y + 9, {
+      width: 80,
       align: "right",
     });
     document
@@ -204,6 +238,8 @@ export class InvoicePdfService {
     const x = 345;
     const rows: Array<[string, number, boolean?]> = [
       ["Subtotal", invoice.subtotal],
+      ["Discount", -invoice.discountTotal],
+      ["Taxable value", invoice.subtotal - invoice.discountTotal],
       ["GST", invoice.taxTotal],
       ["Grand total", invoice.grandTotal, true],
       ["Paid", invoice.amountPaid],

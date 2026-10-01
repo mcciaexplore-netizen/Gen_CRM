@@ -41,6 +41,7 @@ export function InvoiceForm({
     hsnSacCode: value?.hsnSacCode ?? "",
     quantity: value?.quantity ?? 1,
     rate: value?.rate ?? 0,
+    discountPercent: value?.discountPercent ?? 0,
     taxPercent: value?.taxPercent ?? 18,
   });
   const [options, setOptions] = useState<BillingOptionsResponse | null>(null);
@@ -136,6 +137,7 @@ export function InvoiceForm({
         hsnSacCode: line.hsnSacCode,
         quantity: line.quantity,
         rate: line.rate,
+        discountPercent: line.discountPercent ?? 0,
         taxPercent: line.taxPercent,
       })),
     };
@@ -180,6 +182,26 @@ export function InvoiceForm({
       </CardHeader>
       <CardContent>
         <form className="space-y-6" onSubmit={submit}>
+          <section className="grid gap-5 border-b border-slate-200 pb-5 sm:grid-cols-[1fr_auto]">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase text-emerald-800">From</p>
+              <h2 className="text-lg font-bold text-slate-950">
+                {options?.company.name ?? "Your company"}
+              </h2>
+              {options?.company.email ? <p className="text-sm text-slate-600">{options.company.email}</p> : null}
+              {options?.company.phone ? <p className="text-sm text-slate-600">{options.company.phone}</p> : null}
+              {options?.company.gstin ? <p className="text-sm text-slate-600">GSTIN {options.company.gstin}</p> : null}
+              {options?.company.stateCode ? <p className="text-sm text-slate-600">State code {options.company.stateCode}</p> : null}
+            </div>
+            <div className="sm:min-w-52 sm:text-right">
+              <p className="text-xs font-semibold uppercase text-emerald-800">Billing number</p>
+              <p className="mt-1 text-lg font-bold text-slate-950">
+                {invoice?.invoiceNumber ?? (invoice ? `DRAFT-${invoice.id.slice(0, 8).toUpperCase()}` : "Assigned when issued")}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">{invoice ? "Draft invoice" : "A permanent number is assigned on issue"}</p>
+            </div>
+          </section>
+
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="invoice-deal">Create from deal (optional)</Label>
@@ -240,6 +262,16 @@ export function InvoiceForm({
             </div>
           </div>
 
+          <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Bill to</p>
+            <p className="mt-1 font-semibold text-slate-900">
+              {options?.contacts.find((contact) => contact.id === contactId)?.name ?? "Select a customer"}
+            </p>
+            {options?.contacts.find((contact) => contact.id === contactId)?.phone ? (
+              <p className="text-sm text-slate-600">{options.contacts.find((contact) => contact.id === contactId)?.phone}</p>
+            ) : null}
+          </div>
+
           <div className="max-w-xs space-y-2">
             <Label htmlFor="invoice-due">Payment due date</Label>
             <Input
@@ -289,7 +321,7 @@ export function InvoiceForm({
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
                     <div className="space-y-2 sm:col-span-2 lg:col-span-2">
                       <Label htmlFor={line.key + "-description"}>
                         Description
@@ -339,6 +371,16 @@ export function InvoiceForm({
                       value={String(line.rate)}
                     />
                     <LineNumberField
+                      id={line.key + "-discount"}
+                      label="Discount %"
+                      min="0"
+                      onChange={(value) =>
+                        updateLine(line.key, "discountPercent", Number(value))
+                      }
+                      step="0.01"
+                      value={String(line.discountPercent ?? 0)}
+                    />
+                    <LineNumberField
                       id={line.key + "-tax"}
                       label="GST %"
                       min="0"
@@ -356,6 +398,10 @@ export function InvoiceForm({
 
           <div className="ml-auto max-w-sm rounded-lg bg-emerald-50 p-4">
             <TotalRow label="Subtotal" value={totals.subtotal} />
+            {totals.discountTotal > 0 ? (
+              <TotalRow label="Discount" value={-totals.discountTotal} />
+            ) : null}
+            <TotalRow label="Taxable value" value={totals.taxableSubtotal} />
             <TotalRow label="GST" value={totals.taxTotal} />
             <div className="mt-3 border-t border-emerald-200 pt-3">
               <TotalRow label="Grand total" strong value={totals.grandTotal} />
@@ -470,16 +516,22 @@ function TotalRow({
 
 function calculateTotals(lines: InvoiceLineItem[]) {
   let subtotal = 0;
+  let discountTotal = 0;
   let taxTotal = 0;
   lines.forEach((line) => {
     const base = round(line.quantity * line.rate);
+    const discount = round((base * (line.discountPercent ?? 0)) / 100);
+    const taxable = round(base - discount);
     subtotal += base;
-    taxTotal += round((base * line.taxPercent) / 100);
+    discountTotal += discount;
+    taxTotal += round((taxable * line.taxPercent) / 100);
   });
   return {
     subtotal: round(subtotal),
+    discountTotal: round(discountTotal),
+    taxableSubtotal: round(subtotal - discountTotal),
     taxTotal: round(taxTotal),
-    grandTotal: round(subtotal + taxTotal),
+    grandTotal: round(subtotal - discountTotal + taxTotal),
   };
 }
 

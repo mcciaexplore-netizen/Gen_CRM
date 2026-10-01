@@ -10,6 +10,9 @@ coverage/
 .env.*.local
 !.env.example
 apps/api/prisma/dev.db*
+apps/api/.local-db/
+.local-db/
 *.log
+*.log.err
 .DS_Store
 Thumbs.db

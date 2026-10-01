@@ -1,9 +1,8 @@
 "use client";
 
-import {
-  CONTACT_SOURCES,
-  type ContactListResponse,
-  type ContactSource,
+import type {
+  ContactListResponse,
+  ContactSource,
 } from "@msme-crm/shared-types";
 import { FilterX, Loader2, Plus, Search, UsersRound } from "lucide-react";
 import Link from "next/link";
@@ -12,7 +11,7 @@ import { ContactCard } from "@/components/contacts/contact-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
-import { contactSourceLabels } from "@/lib/contacts";
+import { CONTACT_SOURCE_OPTIONS, contactSourceLabels } from "@/lib/contacts";
 
 export default function ContactsPage() {
   const [search, setSearch] = useState("");
@@ -111,7 +110,7 @@ export default function ContactsPage() {
             value={source}
           >
             <option value="">All sources</option>
-            {CONTACT_SOURCES.map((option) => (
+            {CONTACT_SOURCE_OPTIONS.map((option) => (
               <option key={option} value={option}>
                 {contactSourceLabels[option]}
               </option>

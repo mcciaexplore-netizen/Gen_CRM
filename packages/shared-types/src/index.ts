@@ -76,6 +76,7 @@ export interface CompleteBusinessSetupInput {
 }
 
 export const CONTACT_SOURCES = [
+  "gmail",
   "whatsapp",
   "website",
   "marketplace",
@@ -270,7 +271,7 @@ export type MessageStatus = "sent" | "delivered" | "read" | "failed";
 export interface ConversationSummary {
   id: string;
   channel: ConversationChannel;
-  contact: Pick<ContactSummary, "id" | "name" | "phone">;
+  contact: Pick<ContactSummary, "id" | "name" | "phone" | "email">;
   assignedTo: { id: string; name: string } | null;
   lastMessage: {
     body: string;
@@ -384,6 +385,10 @@ export interface InvoiceLineItem {
   hsnSacCode: string;
   quantity: number;
   rate: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  taxableAmount?: number;
+  lineTotal?: number;
   taxPercent: number;
 }
 
@@ -413,9 +418,10 @@ export interface InvoiceSummary {
   id: string;
   invoiceNumber: string | null;
   status: InvoiceStatus;
-  contact: Pick<ContactSummary, "id" | "name" | "phone">;
+  contact: Pick<ContactSummary, "id" | "name" | "phone" | "email">;
   deal: Pick<DealSummary, "id" | "title"> | null;
   subtotal: number;
+  discountTotal: number;
   taxTotal: number;
   grandTotal: number;
   amountPaid: number;
@@ -430,6 +436,13 @@ export interface InvoiceSummary {
 }
 
 export interface InvoiceDetail extends InvoiceSummary {
+  company: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    gstin: string | null;
+    stateCode: string | null;
+  };
   lineItems: InvoiceLineItem[];
   irn: string | null;
   qrCodeUrl: string | null;
@@ -455,6 +468,13 @@ export interface ReceivablesAgingSummary {
 
 export interface BillingOptionsResponse {
   eInvoiceApplicable: boolean;
+  company: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    gstin: string | null;
+    stateCode: string | null;
+  };
   contacts: Array<
     Pick<
       ContactSummary,

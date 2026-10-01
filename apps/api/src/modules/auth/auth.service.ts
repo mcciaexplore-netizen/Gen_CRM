@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -9,7 +10,13 @@ import type { Business, User } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import type { AuthResponse } from "@msme-crm/shared-types";
 import * as bcrypt from "bcrypt";
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import {
+  createHmac,
+  createHash,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import type { JwtPayload } from "../../common/interfaces/authenticated-request.interface";
 import { PrismaService } from "../../prisma/prisma.service";
 import { DEFAULT_PIPELINE_STAGES } from "../pipeline/pipeline.constants";
@@ -18,19 +25,20 @@ import type { SignupDto } from "./dto/signup.dto";
 
 const ACCESS_TOKEN_SECONDS = 15 * 60;
 const REFRESH_TOKEN_SECONDS = 7 * 24 * 60 * 60;
-
 type UserWithBusiness = User & { business: Business };
 
 @Injectable()
 export class AuthService {
   private readonly accessSecret: string;
   private readonly refreshSecret: string;
+  private readonly config: ConfigService;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     config: ConfigService,
   ) {
+    this.config = config;
     const accessSecret = config.get<string>("JWT_ACCESS_SECRET");
     const refreshSecret = config.get<string>("JWT_REFRESH_SECRET");
     if (!accessSecret || !refreshSecret) {
@@ -149,6 +157,180 @@ export class AuthService {
       throw new UnauthorizedException("Session is no longer valid");
     }
     return this.toPublicSession(user);
+  }
+
+  async createEvidenceVaultLaunchUrl(
+    userId: string,
+    businessId: string,
+    state: string,
+  ) {
+    if (!/^[A-Za-z0-9_-]{32,128}$/.test(state ?? "")) {
+      throw new UnauthorizedException("Invalid document-search launch state");
+    }
+    const callback = this.config.get<string>("EVIDENCE_VAULT_CALLBACK_URL");
+    if (!callback) {
+      throw new ServiceUnavailableException(
+        "Document search sign-in is not configured",
+      );
+    }
+    const destination = new URL(callback);
+    if (
+      destination.protocol !== "https:" &&
+      process.env.NODE_ENV === "production"
+    ) {
+      throw new ServiceUnavailableException(
+        "Document search callback must use HTTPS",
+      );
+    }
+
+    const session = await this.getSession(userId, businessId);
+    const localSsoEnabled =
+      process.env.NODE_ENV !== "production" &&
+      this.config.get<string>("EVIDENCE_VAULT_LOCAL_SSO_ENABLED") === "true";
+    let code: string;
+    if (localSsoEnabled) {
+      code = this.createLocalEvidenceVaultCode({
+        subject: userId,
+        email: session.user.email,
+        name: session.user.name,
+      }, state);
+    } else {
+      code = randomBytes(32).toString("base64url");
+      const now = new Date();
+      const codeHash = this.hashRefreshToken(code);
+      await this.prisma.$transaction(async (transaction) => {
+        await transaction.$executeRaw`
+          DELETE FROM evidence_vault_sso_codes WHERE expires_at <= ${now}
+        `;
+        await transaction.$executeRaw`
+          INSERT INTO evidence_vault_sso_codes (code_hash, user_id, expires_at)
+          VALUES (${codeHash}, ${userId}::uuid, ${new Date(now.getTime() + 60_000)})
+        `;
+      });
+    }
+    destination.searchParams.set("code", code);
+    destination.searchParams.set("state", state);
+    return destination.toString();
+  }
+
+  private createLocalEvidenceVaultCode(identity: {
+    subject: string;
+    email: string;
+    name: string;
+  }, state: string) {
+    const secret = this.config.get<string>("EVIDENCE_VAULT_SHARED_SECRET", "").trim();
+    if (secret.length < 32) {
+      throw new ServiceUnavailableException(
+        "Local document search sign-in is not configured",
+      );
+    }
+    const payload = Buffer.from(
+      JSON.stringify({
+        ...identity,
+        state,
+        exp: Math.floor(Date.now() / 1000) + 60,
+        jti: randomBytes(24).toString("base64url"),
+      }),
+      "utf8",
+    ).toString("base64url");
+    const unsignedCode = `local.${payload}`;
+    const signature = createHmac("sha256", secret)
+      .update(unsignedCode)
+      .digest("base64url");
+    return `${unsignedCode}.${signature}`;
+  }
+
+  async redeemEvidenceVaultCode(code: string, authorization?: string) {
+    const expectedSecret = this.config
+      .get<string>("EVIDENCE_VAULT_SHARED_SECRET", "")
+      .trim();
+    const suppliedSecret = authorization?.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length)
+      : "";
+    if (
+      !expectedSecret ||
+      !suppliedSecret ||
+      Buffer.byteLength(expectedSecret) !== Buffer.byteLength(suppliedSecret) ||
+      !timingSafeEqual(Buffer.from(expectedSecret), Buffer.from(suppliedSecret))
+    ) {
+      throw new UnauthorizedException("Invalid document-search integration credentials");
+    }
+
+    if (code?.startsWith("local.")) {
+      const parts = code.split(".");
+      if (parts.length !== 3 || !/^[A-Za-z0-9_-]+$/.test(parts[1])) {
+        throw new UnauthorizedException("Invalid or expired document-search code");
+      }
+      const unsignedCode = `${parts[0]}.${parts[1]}`;
+      const expectedSignature = createHmac("sha256", expectedSecret)
+        .update(unsignedCode)
+        .digest();
+      let suppliedSignature: Buffer;
+      try {
+        suppliedSignature = Buffer.from(parts[2], "base64url");
+      } catch {
+        throw new UnauthorizedException("Invalid or expired document-search code");
+      }
+      if (
+        suppliedSignature.length !== expectedSignature.length ||
+        !timingSafeEqual(expectedSignature, suppliedSignature)
+      ) {
+        throw new UnauthorizedException("Invalid or expired document-search code");
+      }
+
+      let identity: { subject?: unknown; exp?: unknown };
+      try {
+        identity = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+      } catch {
+        throw new UnauthorizedException("Invalid or expired document-search code");
+      }
+      if (
+        typeof identity.subject !== "string" ||
+        typeof identity.exp !== "number" ||
+        identity.exp <= Math.floor(Date.now() / 1000)
+      ) {
+        throw new UnauthorizedException("Invalid or expired document-search code");
+      }
+      const user = await this.prisma.user.findFirst({
+        where: {
+          id: identity.subject,
+          deletedAt: null,
+          business: { deletedAt: null },
+        },
+        select: { id: true, email: true, name: true },
+      });
+      if (!user) throw new UnauthorizedException("CRM account is no longer active");
+      return { subject: user.id, email: user.email, name: user.name };
+    }
+
+    if (!/^[A-Za-z0-9_-]{40,50}$/.test(code ?? "")) {
+      throw new UnauthorizedException("Invalid or expired document-search code");
+    }
+
+    const codeHash = this.hashRefreshToken(code);
+    return this.prisma.$transaction(async (transaction) => {
+      const now = new Date();
+      const consumed = await transaction.$queryRaw<Array<{ userId: string }>>`
+        DELETE FROM evidence_vault_sso_codes
+        WHERE code_hash = ${codeHash} AND expires_at > ${now}
+        RETURNING user_id AS "userId"
+      `;
+      if (consumed.length !== 1) {
+        throw new UnauthorizedException("Invalid or expired document-search code");
+      }
+      const users = await transaction.$queryRaw<
+        Array<{ id: string; email: string; name: string }>
+      >`
+        SELECT u.id, u.email, u.name
+        FROM users u
+        INNER JOIN businesses b ON b.id = u.business_id
+        WHERE u.id = ${consumed[0].userId}::uuid
+          AND u.deleted_at IS NULL AND b.deleted_at IS NULL
+      `;
+      const user = users[0];
+      if (!user) throw new UnauthorizedException("CRM account is no longer active");
+      return { subject: user.id, email: user.email, name: user.name };
+    });
   }
 
   private async createSession(user: UserWithBusiness) {

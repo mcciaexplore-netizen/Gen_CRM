@@ -1,5 +1,10 @@
 import { Transform } from "class-transformer";
-import { IsOptional, IsString, Length, MaxLength } from "class-validator";
+import { ArrayMaxSize, IsArray, IsEmail, IsOptional, IsString, Length, MaxLength } from "class-validator";
+
+const splitAddresses = ({ value }: { value?: string | string[] }) =>
+  (Array.isArray(value) ? value : (value ?? "").split(/[;,]/))
+    .map((address) => address.trim())
+    .filter(Boolean);
 
 export class SendTextMessageDto {
   @Transform(({ value }: { value: string }) => value.trim())
@@ -12,4 +17,25 @@ export class SendTextMessageDto {
   @IsString()
   @MaxLength(200)
   subject?: string;
+
+  @IsOptional()
+  @Transform(splitAddresses)
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsEmail({}, { each: true })
+  to?: string[];
+
+  @IsOptional()
+  @Transform(splitAddresses)
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsEmail({}, { each: true })
+  cc?: string[];
+
+  @IsOptional()
+  @Transform(splitAddresses)
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsEmail({}, { each: true })
+  bcc?: string[];
 }

@@ -14,6 +14,7 @@ enum Role {
 }
 
 enum ContactSource {
+  GMAIL
   WHATSAPP
   WEBSITE
   MARKETPLACE
@@ -105,101 +106,119 @@ enum PaymentMethod {
 
 // Business is the tenant root. All entities owned by it carry business_id.
 model Business {
-  id                    String              @id @default(uuid()) @db.Uuid
-  name                  String
-  businessType          String?             @map("business_type")
-  teamSize              Int?                @map("team_size")
-  onboardingCompletedAt DateTime?           @map("onboarding_completed_at")
-  eInvoiceApplicable    Boolean             @default(false) @map("e_invoice_applicable")
-  inventoryEnabled      Boolean             @default(false) @map("inventory_enabled")
-  invoiceSequence       Int                 @default(0) @map("invoice_sequence")
-  timezone              String              @default("Asia/Kolkata")
-  gstin                 String?
-  stateCode             String?             @map("state_code")
-  createdAt             DateTime            @default(now()) @map("created_at")
-  updatedAt             DateTime            @updatedAt @map("updated_at")
-  deletedAt             DateTime?           @map("deleted_at")
-  users                 User[]
-  contacts              Contact[]
-  pipelineStages        PipelineStage[]
-  deals                 Deal[]
-  activityLogs          ActivityLog[]
-  tasks                 Task[]
-  whatsappConnection    WhatsAppConnection?
-  channelConnection     ChannelConnection?
-  conversations         Conversation[]
-  messages              Message[]
-  conversationNotes     ConversationNote[]
-  quotations            Quotation[]
-  invoices              Invoice[]
-  payments              Payment[]
-  whatsappCampaigns     WhatsAppCampaign[]
+  id                         String                      @id @default(uuid()) @db.Uuid
+  name                       String
+  businessType               String?                     @map("business_type")
+  teamSize                   Int?                        @map("team_size")
+  onboardingCompletedAt      DateTime?                   @map("onboarding_completed_at")
+  eInvoiceApplicable         Boolean                     @default(false) @map("e_invoice_applicable")
+  inventoryEnabled           Boolean                     @default(false) @map("inventory_enabled")
+  invoiceSequence            Int                         @default(0) @map("invoice_sequence")
+  timezone                   String                      @default("Asia/Kolkata")
+  gstin                      String?
+  stateCode                  String?                     @map("state_code")
+  createdAt                  DateTime                    @default(now()) @map("created_at")
+  updatedAt                  DateTime                    @updatedAt @map("updated_at")
+  deletedAt                  DateTime?                   @map("deleted_at")
+  users                      User[]
+  contacts                   Contact[]
+  pipelineStages             PipelineStage[]
+  deals                      Deal[]
+  activityLogs               ActivityLog[]
+  tasks                      Task[]
+  whatsappConnection         WhatsAppConnection?
+  channelConnection          ChannelConnection?
+  gmailConnection            GmailConnection?
+  gmailOAuthConfig           GmailOAuthConfig?
+  smtpConfig                 SmtpConfig?
+  conversations              Conversation[]
+  messages                   Message[]
+  conversationNotes          ConversationNote[]
+  quotations                 Quotation[]
+  invoices                   Invoice[]
+  payments                   Payment[]
+  whatsappCampaigns          WhatsAppCampaign[]
   whatsappCampaignRecipients WhatsAppCampaignRecipient[]
-  marketplaceLeads      MarketplaceLead[]
-  inventoryItems        InventoryItem[]
-  stockMovements        StockMovement[]
+  marketplaceLeads           MarketplaceLead[]
+  inventoryItems             InventoryItem[]
+  stockMovements             StockMovement[]
+
+  leadBatches                LeadBatch[]
+  leadTrackers               LeadTracker[]
 
   @@map("businesses")
 }
 
 model User {
-  id                    String             @id @default(uuid()) @db.Uuid
-  businessId            String             @map("business_id") @db.Uuid
-  business              Business           @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  id                    String                 @id @default(uuid()) @db.Uuid
+  businessId            String                 @map("business_id") @db.Uuid
+  business              Business               @relation(fields: [businessId], references: [id], onDelete: Restrict)
   name                  String
-  email                 String             @unique
+  email                 String                 @unique
   phone                 String
-  passwordHash          String             @map("password_hash")
-  refreshTokenHash      String?            @map("refresh_token_hash") @db.Text
-  role                  Role               @default(STAFF)
-  createdAt             DateTime           @default(now()) @map("created_at")
-  updatedAt             DateTime           @updatedAt @map("updated_at")
-  deletedAt             DateTime?          @map("deleted_at")
-  createdContacts       Contact[]          @relation("ContactCreator")
-  assignedContacts      Contact[]          @relation("ContactAssignee")
-  assignedDeals         Deal[]             @relation("DealAssignee")
-  dealActivities        ActivityLog[]      @relation("ActivityActor")
-  assignedTasks         Task[]             @relation("TaskAssignee")
-  assignedConversations Conversation[]     @relation("ConversationAssignee")
-  sentMessages          Message[]          @relation("MessageSender")
-  conversationNotes     ConversationNote[] @relation("NoteAuthor")
-  createdQuotations     Quotation[]        @relation("QuotationCreator")
-  createdInvoices       Invoice[]          @relation("InvoiceCreator")
-  recordedPayments      Payment[]          @relation("PaymentRecorder")
-  stockMovements        StockMovement[]    @relation("StockMovementActor")
+  passwordHash          String                 @map("password_hash")
+  refreshTokenHash      String?                @map("refresh_token_hash") @db.Text
+  role                  Role                   @default(STAFF)
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  deletedAt             DateTime?              @map("deleted_at")
+  createdContacts       Contact[]              @relation("ContactCreator")
+  assignedContacts      Contact[]              @relation("ContactAssignee")
+  assignedDeals         Deal[]                 @relation("DealAssignee")
+  dealActivities        ActivityLog[]          @relation("ActivityActor")
+  assignedTasks         Task[]                 @relation("TaskAssignee")
+  assignedConversations Conversation[]         @relation("ConversationAssignee")
+  sentMessages          Message[]              @relation("MessageSender")
+  conversationNotes     ConversationNote[]     @relation("NoteAuthor")
+  createdQuotations     Quotation[]            @relation("QuotationCreator")
+  createdInvoices       Invoice[]              @relation("InvoiceCreator")
+  recordedPayments      Payment[]              @relation("PaymentRecorder")
+  stockMovements        StockMovement[]        @relation("StockMovementActor")
+  evidenceVaultSsoCodes EvidenceVaultSsoCode[]
 
   @@index([businessId])
   @@map("users")
 }
 
+model EvidenceVaultSsoCode {
+  codeHash  String   @id @map("code_hash") @db.Char(64)
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  @@index([expiresAt])
+  @@map("evidence_vault_sso_codes")
+}
+
 model Contact {
-  id               String         @id @default(uuid()) @db.Uuid
-  businessId       String         @map("business_id") @db.Uuid
-  business         Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  name             String
-  phone            String
-  normalizedPhone  String         @map("normalized_phone")
-  email            String?
-  source           ContactSource  @default(OTHER)
-  tags             String[]       @default([])
-  customFields     Json           @default("{}") @map("custom_fields")
-  createdById      String         @map("created_by") @db.Uuid
-  createdBy        User           @relation("ContactCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  assignedToId     String         @map("assigned_to") @db.Uuid
-  assignedTo       User           @relation("ContactAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
-  creditTermsDays  Int            @default(30) @map("credit_terms_days")
-  gstin            String?
-  billingStateCode String?        @map("billing_state_code")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  deletedAt        DateTime?      @map("deleted_at")
-  whatsappOptedOut Boolean        @default(false) @map("whatsapp_opted_out")
-  deals            Deal[]
-  conversations    Conversation[]
-  quotations       Quotation[]
-  invoices         Invoice[]
+  id                 String                      @id @default(uuid()) @db.Uuid
+  businessId         String                      @map("business_id") @db.Uuid
+  business           Business                    @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  name               String
+  phone              String
+  normalizedPhone    String                      @map("normalized_phone")
+  email              String?
+  source             ContactSource               @default(OTHER)
+  tags               String[]                    @default([])
+  customFields       Json                        @default("{}") @map("custom_fields")
+  createdById        String                      @map("created_by") @db.Uuid
+  createdBy          User                        @relation("ContactCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  assignedToId       String                      @map("assigned_to") @db.Uuid
+  assignedTo         User                        @relation("ContactAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
+  creditTermsDays    Int                         @default(30) @map("credit_terms_days")
+  gstin              String?
+  billingStateCode   String?                     @map("billing_state_code")
+  createdAt          DateTime                    @default(now()) @map("created_at")
+  updatedAt          DateTime                    @updatedAt @map("updated_at")
+  deletedAt          DateTime?                   @map("deleted_at")
+  whatsappOptedOut   Boolean                     @default(false) @map("whatsapp_opted_out")
+  deals              Deal[]
+  conversations      Conversation[]
+  quotations         Quotation[]
+  invoices           Invoice[]
   campaignRecipients WhatsAppCampaignRecipient[]
-  marketplaceLeads  MarketplaceLead[]
+  marketplaceLeads   MarketplaceLead[]
 
   @@index([businessId])
   @@index([businessId, normalizedPhone])
@@ -322,6 +341,55 @@ model ChannelConnection {
 
   @@index([businessId])
   @@map("channel_connections")
+}
+
+model GmailConnection {
+  id                    String    @id @default(uuid()) @db.Uuid
+  businessId            String    @unique @map("business_id") @db.Uuid
+  business              Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  emailAddress          String    @map("email_address")
+  accessTokenEncrypted  String    @map("access_token_encrypted") @db.Text
+  refreshTokenEncrypted String    @map("refresh_token_encrypted") @db.Text
+  tokenExpiresAt        DateTime  @map("token_expires_at") @db.Timestamp(3)
+  lastSyncAt            DateTime? @map("last_sync_at") @db.Timestamp(3)
+  enabled               Boolean   @default(true)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
+
+  @@index([businessId])
+  @@map("gmail_connections")
+}
+
+model GmailOAuthConfig {
+  id                    String    @id @default(uuid()) @db.Uuid
+  businessId            String    @unique @map("business_id") @db.Uuid
+  business              Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  clientIdEncrypted     String    @map("client_id_encrypted") @db.Text
+  clientSecretEncrypted String    @map("client_secret_encrypted") @db.Text
+  redirectUri           String    @map("redirect_uri") @db.Text
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+  deletedAt             DateTime? @map("deleted_at") @db.Timestamp(3)
+
+  @@map("gmail_oauth_configs")
+}
+
+model SmtpConfig {
+  id                    String    @id @default(uuid()) @db.Uuid
+  businessId            String    @unique @map("business_id") @db.Uuid
+  business              Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  senderEmail           String    @map("sender_email")
+  host                  String
+  port                  Int
+  security              String    @default("STARTTLS")
+  username              String
+  passwordEncrypted     String    @map("password_encrypted") @db.Text
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+  deletedAt             DateTime? @map("deleted_at") @db.Timestamp(3)
+
+  @@map("smtp_configs")
 }
 
 model Conversation {
@@ -510,18 +578,18 @@ model InventoryItem {
 }
 
 model StockMovement {
-  id             String          @id @default(uuid()) @db.Uuid
-  businessId     String          @map("business_id") @db.Uuid
-  business       Business        @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  inventoryItemId String         @map("inventory_item_id") @db.Uuid
-  inventoryItem  InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
-  type           StockMovementType
-  quantityDelta  Decimal         @map("quantity_delta") @db.Decimal(14, 3)
-  reason         String?
-  reference      String?
-  actorId        String          @map("actor_id") @db.Uuid
-  actor          User            @relation("StockMovementActor", fields: [actorId], references: [id], onDelete: Restrict)
-  createdAt      DateTime        @default(now()) @map("created_at")
+  id              String            @id @default(uuid()) @db.Uuid
+  businessId      String            @map("business_id") @db.Uuid
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  inventoryItemId String            @map("inventory_item_id") @db.Uuid
+  inventoryItem   InventoryItem     @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  type            StockMovementType
+  quantityDelta   Decimal           @map("quantity_delta") @db.Decimal(14, 3)
+  reason          String?
+  reference       String?
+  actorId         String            @map("actor_id") @db.Uuid
+  actor           User              @relation("StockMovementActor", fields: [actorId], references: [id], onDelete: Restrict)
+  createdAt       DateTime          @default(now()) @map("created_at")
 
   @@index([businessId])
   @@index([businessId, inventoryItemId, createdAt])
@@ -552,22 +620,22 @@ model WhatsAppCampaign {
 }
 
 model WhatsAppCampaignRecipient {
-  id                 String                          @id @default(uuid()) @db.Uuid
-  businessId         String                          @map("business_id") @db.Uuid
-  business           Business                        @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  campaignId         String                          @map("campaign_id") @db.Uuid
-  campaign           WhatsAppCampaign                @relation(fields: [campaignId], references: [id], onDelete: Restrict)
-  contactId          String                          @map("contact_id") @db.Uuid
-  contact            Contact                         @relation(fields: [contactId], references: [id], onDelete: Restrict)
-  status             WhatsAppCampaignRecipientStatus @default(PENDING)
-  externalMessageId  String?                         @map("external_message_id")
-  sentAt             DateTime?                        @map("sent_at")
-  deliveredAt        DateTime?                        @map("delivered_at")
-  readAt             DateTime?                        @map("read_at")
-  failedAt           DateTime?                        @map("failed_at")
-  failureReason      String?                          @map("failure_reason")
-  createdAt          DateTime                         @default(now()) @map("created_at")
-  updatedAt          DateTime                         @updatedAt @map("updated_at")
+  id                String                          @id @default(uuid()) @db.Uuid
+  businessId        String                          @map("business_id") @db.Uuid
+  business          Business                        @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  campaignId        String                          @map("campaign_id") @db.Uuid
+  campaign          WhatsAppCampaign                @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  contactId         String                          @map("contact_id") @db.Uuid
+  contact           Contact                         @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  status            WhatsAppCampaignRecipientStatus @default(PENDING)
+  externalMessageId String?                         @map("external_message_id")
+  sentAt            DateTime?                       @map("sent_at")
+  deliveredAt       DateTime?                       @map("delivered_at")
+  readAt            DateTime?                       @map("read_at")
+  failedAt          DateTime?                       @map("failed_at")
+  failureReason     String?                         @map("failure_reason")
+  createdAt         DateTime                        @default(now()) @map("created_at")
+  updatedAt         DateTime                        @updatedAt @map("updated_at")
 
   @@unique([campaignId, contactId])
   @@unique([businessId, externalMessageId])
@@ -577,23 +645,62 @@ model WhatsAppCampaignRecipient {
 }
 
 model MarketplaceLead {
-  id         String    @id @default(uuid()) @db.Uuid
-  businessId String    @map("business_id") @db.Uuid
-  business   Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
   provider   String
-  externalId String    @map("external_id")
+  externalId String   @map("external_id")
   name       String
   phone      String
   email      String?
-  message    String?   @db.Text
-  payload    Json      @default("{}")
-  contactId  String?   @map("contact_id") @db.Uuid
-  contact    Contact?  @relation(fields: [contactId], references: [id], onDelete: Restrict)
-  taskId     String?   @map("task_id") @db.Uuid
-  createdAt  DateTime  @default(now()) @map("created_at")
+  message    String?  @db.Text
+  payload    Json     @default("{}")
+  contactId  String?  @map("contact_id") @db.Uuid
+  contact    Contact? @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  taskId     String?  @map("task_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
 
   @@unique([businessId, provider, externalId])
   @@index([businessId])
   @@index([businessId, createdAt])
   @@map("marketplace_leads")
+}
+
+model LeadBatch {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  fileName   String   @map("file_name")
+  fileType   String   @map("file_type")
+  totalLeads Int      @map("total_leads")
+  hotCount   Int      @map("hot_count")
+  warmCount  Int      @map("warm_count")
+  coldCount  Int      @map("cold_count")
+  leads      Json     @default("[]")
+  createdAt  DateTime @default(now()) @map("created_at")
+  trackers   LeadTracker[]
+
+  @@index([businessId])
+  @@index([businessId, createdAt])
+  @@map("lead_batches")
+}
+
+model LeadTracker {
+  id           String     @id @default(uuid()) @db.Uuid
+  businessId   String     @map("business_id") @db.Uuid
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  batchId      String     @map("batch_id") @db.Uuid
+  batch        LeadBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  leadId       Int        @map("lead_id")
+  stage        String     @default("NEW")
+  nextFollowUp DateTime?  @map("next_follow_up")
+  stageNotes   Json       @default("{}") @map("stage_notes")
+  history      Json       @default("[]")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@unique([batchId, leadId])
+  @@index([businessId])
+  @@index([businessId, batchId])
+  @@map("lead_trackers")
 }

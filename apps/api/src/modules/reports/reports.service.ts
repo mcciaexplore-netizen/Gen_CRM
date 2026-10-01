@@ -20,6 +20,7 @@ import { BillingService } from "../billing/billing.service";
 import { TasksService } from "../tasks/tasks.service";
 
 const sourceFromPrisma: Record<PrismaContactSource, ContactSource> = {
+  GMAIL: "gmail",
   WHATSAPP: "whatsapp",
   WEBSITE: "website",
   MARKETPLACE: "marketplace",

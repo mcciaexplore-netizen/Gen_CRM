@@ -73,6 +73,9 @@ export class ConversationsController {
       conversationId,
       dto.body,
       dto.subject,
+      dto.to,
+      dto.cc,
+      dto.bcc,
     );
   }
 

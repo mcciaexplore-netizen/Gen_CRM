@@ -11,7 +11,7 @@ import {
   CircleCheckBig,
   IndianRupee,
   Loader2,
-  MessageCircle,
+  Mail,
   Plus,
   RefreshCw,
   TrendingUp,
@@ -24,6 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api";
 
 const sourceLabels: Record<LeadSourceMetric["source"], string> = {
+  gmail: "Email",
   whatsapp: "WhatsApp",
   website: "Website",
   marketplace: "Marketplace",
@@ -242,7 +243,7 @@ export function OwnerDashboard() {
             icon={TrendingUp}
             label="Open pipeline"
           />
-          <QuickAction href="/inbox" icon={MessageCircle} label="Team inbox" />
+          <QuickAction href="/gmail" icon={Mail} label="Email" />
           <QuickAction
             href="/invoices/new"
             icon={IndianRupee}

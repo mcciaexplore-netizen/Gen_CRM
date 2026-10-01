@@ -22,6 +22,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import type { JwtPayload } from "../../common/interfaces/authenticated-request.interface";
 import { ChannelsService } from "../channels/channels.service";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
+import { SmtpService } from "../gmail/smtp.service";
 import type { AssignConversationDto } from "./dto/assign-conversation.dto";
 import type { CreateConversationDto } from "./dto/create-conversation.dto";
 import type { CreateNoteDto } from "./dto/create-note.dto";
@@ -108,12 +109,20 @@ const channelToPrisma: Record<
   email: ConversationChannel.EMAIL,
 };
 
+const channelFilterToPrisma: Record<SharedConversationChannel, ConversationChannel> = {
+  whatsapp: ConversationChannel.WHATSAPP,
+  sms: ConversationChannel.SMS,
+  email: ConversationChannel.EMAIL,
+  call: ConversationChannel.CALL,
+};
+
 @Injectable()
 export class ConversationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsAppService,
     private readonly channels: ChannelsService,
+    private readonly smtp: SmtpService,
   ) {}
 
   async options(businessId: string, actor: JwtPayload) {
@@ -192,6 +201,7 @@ export class ConversationsService {
         businessId,
         deletedAt: null,
         ...(query.contactId ? { contactId: query.contactId } : {}),
+        ...(query.channel ? { channel: channelFilterToPrisma[query.channel] } : {}),
         ...(query.assignedToId ? { assignedToId: query.assignedToId } : {}),
         ...this.assignmentScope(actor),
         ...(query.search
@@ -257,6 +267,9 @@ export class ConversationsService {
     conversationId: string,
     body: string,
     subject?: string,
+    to?: string[],
+    cc?: string[],
+    bcc?: string[],
   ) {
     const conversation = await this.requireConversation(
       businessId,
@@ -281,15 +294,18 @@ export class ConversationsService {
         )
       ).externalMessageId;
     } else if (conversation.channel === ConversationChannel.EMAIL) {
-      if (!conversation.contact.email) {
-        throw new BadRequestException("Contact email is missing");
+      if (!conversation.contact.email && !to?.length) {
+        throw new BadRequestException("Add at least one email recipient");
       }
       externalMessageId = (
-        await this.channels.sendEmail(
+        await this.smtp.sendEmail(
           businessId,
-          conversation.contact.email,
+          conversation.contact.email ?? "",
           subject || "Message from your CRM contact",
           body,
+          to?.length ? to : conversation.contact.email ? [conversation.contact.email] : [],
+          cc,
+          bcc,
         )
       ).externalMessageId;
     } else {
