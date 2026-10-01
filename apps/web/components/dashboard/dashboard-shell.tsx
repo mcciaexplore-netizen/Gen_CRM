@@ -14,6 +14,7 @@ import {
   PanelsTopLeft,
   ReceiptIndianRupee,
   ShieldCheck,
+  Target,
   X,
   Building2,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const navigation = [
   { key: "home",       icon: Gauge,               href: "/dashboard", roles: ["OWNER", "ACCOUNTANT"] },
   { key: "evidenceVault", icon: FileSearch, href: `${evidenceVaultUrl}/sso/start`, roles: ["OWNER", "STAFF", "ACCOUNTANT"] },
   { key: "gmail",      icon: Mail,                 href: "/gmail",     roles: ["OWNER", "STAFF"] },
+  { key: "leads",      icon: Target,               href: "/leads",     roles: ["OWNER", "STAFF"] },
   { key: "contacts",   icon: ContactRound,         href: "/contacts",  roles: ["OWNER", "STAFF"] },
   { key: "broadcasts", icon: Megaphone,            href: "/broadcasts",roles: ["OWNER"] },
   { key: "pipeline",   icon: PanelsTopLeft,        href: "/pipeline",  roles: ["OWNER", "STAFF"] },
@@ -96,6 +98,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const mobileNavigation = visibleNavigation.slice(0, 5);
   const sectionName = pathname.startsWith("/contacts")
     ? t("contacts")
+    : pathname.startsWith("/leads")
+      ? t("leads")
     : pathname.startsWith("/gmail")
       ? t("gmail")
     : pathname.startsWith("/inbox")
@@ -113,7 +117,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-slate-50 lg:pl-64">
 
-      {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
+      {/* â”€â”€ Desktop sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <aside
         className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-white px-3 py-5 lg:flex shadow-sm"
       >
@@ -169,7 +173,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* ── Mobile overlay menu ──────────────────────────────────────────── */}
+      {/* â”€â”€ Mobile overlay menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {menuOpen ? (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
@@ -197,7 +201,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </div>
       ) : null}
 
-      {/* ── Top header ──────────────────────────────────────────────────── */}
+      {/* â”€â”€ Top header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <header
         className="sticky top-0 z-20 flex h-16 items-center justify-between px-4 sm:px-6"
         style={{
@@ -261,12 +265,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* ── Page content ────────────────────────────────────────────────── */}
+      {/* â”€â”€ Page content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <main className="mx-auto max-w-6xl p-4 pb-24 sm:p-6 lg:pb-6">
         {children}
       </main>
 
-      {/* ── Mobile bottom nav ────────────────────────────────────────────── */}
+      {/* â”€â”€ Mobile bottom nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <nav
         className="safe-bottom fixed inset-x-0 bottom-0 z-20 flex border-t bg-white px-2 pt-2 lg:hidden"
         style={{ borderTopColor: "#0057A8", borderTopWidth: "2px" }}
@@ -298,7 +302,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
@@ -371,3 +375,4 @@ function isRouteAllowed(pathname: string, role: UserRole) {
       (item.roles as readonly UserRole[]).includes(role),
   );
 }
+

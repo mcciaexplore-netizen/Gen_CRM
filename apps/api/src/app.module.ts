@@ -17,6 +17,7 @@ import { DealsModule } from "./modules/deals/deals.module";
 import { HealthModule } from "./modules/health/health.module";
 import { GmailModule } from "./modules/gmail/gmail.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
+import { LeadsModule } from "./modules/leads/leads.module";
 import { PipelineModule } from "./modules/pipeline/pipeline.module";
 import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
 import { ReportsModule } from "./modules/reports/reports.module";
@@ -45,6 +46,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     HealthModule,
     GmailModule,
     InventoryModule,
+    LeadsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

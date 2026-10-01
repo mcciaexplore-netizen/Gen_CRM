@@ -143,6 +143,9 @@ model Business {
   inventoryItems             InventoryItem[]
   stockMovements             StockMovement[]
 
+  leadBatches                LeadBatch[]
+  leadTrackers               LeadTracker[]
+
   @@map("businesses")
 }
 
@@ -661,4 +664,43 @@ model MarketplaceLead {
   @@index([businessId])
   @@index([businessId, createdAt])
   @@map("marketplace_leads")
+}
+
+model LeadBatch {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  fileName   String   @map("file_name")
+  fileType   String   @map("file_type")
+  totalLeads Int      @map("total_leads")
+  hotCount   Int      @map("hot_count")
+  warmCount  Int      @map("warm_count")
+  coldCount  Int      @map("cold_count")
+  leads      Json     @default("[]")
+  createdAt  DateTime @default(now()) @map("created_at")
+  trackers   LeadTracker[]
+
+  @@index([businessId])
+  @@index([businessId, createdAt])
+  @@map("lead_batches")
+}
+
+model LeadTracker {
+  id           String     @id @default(uuid()) @db.Uuid
+  businessId   String     @map("business_id") @db.Uuid
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  batchId      String     @map("batch_id") @db.Uuid
+  batch        LeadBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  leadId       Int        @map("lead_id")
+  stage        String     @default("NEW")
+  nextFollowUp DateTime?  @map("next_follow_up")
+  stageNotes   Json       @default("{}") @map("stage_notes")
+  history      Json       @default("[]")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@unique([batchId, leadId])
+  @@index([businessId])
+  @@index([businessId, batchId])
+  @@map("lead_trackers")
 }

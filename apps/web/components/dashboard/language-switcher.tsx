@@ -11,7 +11,8 @@ export function LanguageSwitcher() {
 
   function change(value: string) {
     document.cookie = `CRM_LOCALE=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
-    router.refresh();
+    // Full reload: Hindi text is applied in place, so a clean render is needed to switch back.
+    window.location.reload();
   }
 
   return (
