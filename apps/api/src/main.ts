@@ -8,7 +8,7 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
-
+  //local
   app.setGlobalPrefix("api");
   app.use(helmet());
   app.use(cookieParser());

@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { AuditLogInterceptor } from "./common/interceptors/audit-log.interceptor";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";

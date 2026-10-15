@@ -2,11 +2,9 @@
 
 import { Languages } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 
 export function LanguageSwitcher() {
   const locale = useLocale();
-  const router = useRouter();
   const t = useTranslations("Language");
 
   function change(value: string) {

@@ -31,8 +31,8 @@ export default function SignupPage() {
         body: JSON.stringify({ ownerName: name, businessName, phone, email, password }),
       });
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Failed to create account");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Failed to create account");
     } finally {
       setLoading(false);
     }

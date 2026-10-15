@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { ContactSource, Prisma, WhatsAppCampaignRecipientStatus, WhatsAppCampaignStatus } from "@prisma/client";
+import { ContactSource, WhatsAppCampaignRecipientStatus, WhatsAppCampaignStatus } from "@prisma/client";
 import type { JwtPayload } from "../../common/interfaces/authenticated-request.interface";
 import { PrismaService } from "../../prisma/prisma.service";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";

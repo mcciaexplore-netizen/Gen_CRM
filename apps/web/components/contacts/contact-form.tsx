@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
 import { CONTACT_SOURCE_OPTIONS, contactSourceLabels } from "@/lib/contacts";
+import { GST_STATES } from "@/lib/gst-states";
 
 interface CustomFieldRow {
   id: number;
@@ -308,20 +309,36 @@ export function ContactForm({
               <Input
                 id="gstin"
                 maxLength={15}
-                onChange={(event) => setGstin(event.target.value.toUpperCase())}
+                onChange={(event) => {
+                  const value = event.target.value.toUpperCase();
+                  setGstin(value);
+                  // GSTIN starts with the state code; prefill place of supply.
+                  const prefix = value.slice(0, 2);
+                  if (
+                    !billingStateCode &&
+                    GST_STATES.some((state) => state.code === prefix)
+                  ) {
+                    setBillingStateCode(prefix);
+                  }
+                }}
                 placeholder="27ABCDE1234F1Z5"
                 value={gstin}
               />
             </Field>
-            <Field id="billingStateCode" label="Place of supply code">
-              <Input
+            <Field id="billingStateCode" label="Place of supply (state)">
+              <select
+                className="h-12 w-full rounded-md border bg-white px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                 id="billingStateCode"
-                inputMode="numeric"
-                maxLength={2}
                 onChange={(event) => setBillingStateCode(event.target.value)}
-                placeholder="27"
                 value={billingStateCode}
-              />
+              >
+                <option value="">Not specified</option>
+                {GST_STATES.map((state) => (
+                  <option key={state.code} value={state.code}>
+                    {state.code} - {state.name}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
 

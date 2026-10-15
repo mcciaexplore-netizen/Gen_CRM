@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { RelatedEntityType, TaskSource, TaskStatus } from "@prisma/client";
+import { RelatedEntityType, TaskSource } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { InvoiceAutomationService } from "../billing/invoice-automation.service";
 import { STALE_DEAL_DAYS } from "./tasks.constants";
@@ -21,7 +21,6 @@ export class TaskAutomationService {
     });
     let staleTasksCreated = 0;
     let tasksMarkedOverdue = 0;
-    let remindersQueued = 0;
     let invoicesMarkedOverdue = 0;
     let paymentReminderTasksCreated = 0;
 

@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "whatsapp_campaign_recipients_business_id_external_message_id_ke" RENAME TO "whatsapp_campaign_recipients_business_id_external_message_i_key";

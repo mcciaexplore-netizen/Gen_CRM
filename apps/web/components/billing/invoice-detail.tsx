@@ -469,17 +469,6 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 font-medium">{value}</p>
-    </div>
-  );
-}
-
 function MoneyRow({
   label,
   strong = false,

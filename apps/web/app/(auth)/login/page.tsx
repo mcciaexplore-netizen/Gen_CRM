@@ -28,8 +28,8 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Invalid email or password");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export default function LoginPage() {
       </form>
 
       <p className="text-center text-sm text-slate-600">
-        Don't have an account?{" "}
+        Don&apos;t have an account?{" "}
         <Link href="/signup" className="font-semibold text-[#0057A8] hover:underline">
           Create an account
         </Link>
