@@ -7,7 +7,7 @@ export const HI_DICTIONARY: Record<string, string> = {
   // Brand / auth
   "MCCIA": "एमसीसीआईए",
   "MCCIA CRM": "एमसीसीआईए सीआरएम",
-  "SahayakCRM": "सहायकसीआरएम",
+  "Mini CRM": "मिनी सीआरएम",
   "Sign in to your account": "अपने खाते में साइन इन करें",
   "Enter your email and password to access the CRM.": "सीआरएम तक पहुँचने के लिए अपना ईमेल और पासवर्ड दर्ज करें।",
   "Email address": "ईमेल पता",
@@ -33,7 +33,7 @@ export const HI_DICTIONARY: Record<string, string> = {
   "Let's tailor your workspace": "आइए आपका वर्कस्पेस तैयार करें",
   "Three quick steps. You can change these details later.": "तीन आसान चरण। आप ये विवरण बाद में बदल सकते हैं।",
   "Loading workspace": "वर्कस्पेस लोड हो रहा है",
-  "New to SahayakCRM?": "सहायकसीआरएम में नए हैं?",
+  "New to Mini CRM?": "मिनी सीआरएम में नए हैं?",
   "Don't have an account?": "खाता नहीं है?",
   "Already have an account?": "पहले से खाता है?",
   "Step": "चरण",

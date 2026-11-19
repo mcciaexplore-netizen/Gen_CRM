@@ -89,7 +89,7 @@ export default function SetupPage() {
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground">
             <CircleCheckBig className="h-5 w-5" />
           </span>
-          <span className="text-xl font-bold tracking-tight">SahayakCRM</span>
+          <span className="text-xl font-bold tracking-tight">Mini CRM</span>
         </div>
 
         <Card>
