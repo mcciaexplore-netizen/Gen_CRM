@@ -654,3 +654,11 @@ export interface QuotationOptionsResponse {
 export interface QuotationConvertResponse {
   invoiceId: string;
 }
+
+export interface QuotationTemplateSummary {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -144,6 +144,7 @@ model Business {
   messages                   Message[]
   conversationNotes          ConversationNote[]
   quotations                 Quotation[]
+  quotationTemplates         QuotationTemplate[]
   invoices                   Invoice[]
   payments                   Payment[]
   whatsappCampaigns          WhatsAppCampaign[]
@@ -497,6 +498,21 @@ model Quotation {
   @@index([businessId, dealId, createdAt])
   @@index([businessId, contactId])
   @@map("quotations")
+}
+
+model QuotationTemplate {
+  id          String    @id @default(uuid()) @db.Uuid
+  businessId  String    @map("business_id") @db.Uuid
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  name        String
+  htmlContent String    @map("html_content") @db.Text
+  isDefault   Boolean   @default(false) @map("is_default")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@index([businessId])
+  @@map("quotation_templates")
 }
 
 model Invoice {

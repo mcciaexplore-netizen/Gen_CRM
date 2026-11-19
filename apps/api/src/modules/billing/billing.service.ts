@@ -37,6 +37,7 @@ import {
 import { InvoiceAutomationService } from "./invoice-automation.service";
 import { InvoicePdfService } from "./invoice-pdf.service";
 import { InventoryService } from "../inventory/inventory.service";
+import { ChannelsService } from "../channels/channels.service";
 
 const invoiceSelect = {
   id: true,
@@ -130,6 +131,7 @@ export class BillingService {
     private readonly automation: InvoiceAutomationService,
     private readonly invoicePdf: InvoicePdfService,
     private readonly inventory: InventoryService,
+    private readonly channels: ChannelsService,
     @Inject(GST_COMPLIANCE_PROVIDER)
     private readonly compliance: GSTComplianceProvider,
   ) {}
@@ -746,6 +748,31 @@ export class BillingService {
       buffer,
       filename: (detail.invoiceNumber ?? "draft-invoice") + ".pdf",
     };
+  }
+
+  async send(businessId: string, invoiceId: string) {
+    const invoice = await this.requireInvoice(businessId, invoiceId);
+    if (invoice.status === PrismaInvoiceStatus.DRAFT) {
+      throw new BadRequestException("Issue the invoice before sending it");
+    }
+    if (!invoice.contact.email) {
+      throw new BadRequestException("This customer has no email address on file");
+    }
+    const detail = this.toDetail(invoice);
+    const file = await this.pdf(businessId, invoiceId);
+    const amount = new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 2,
+    }).format(detail.grandTotal);
+    await this.channels.sendEmail(
+      businessId,
+      invoice.contact.email,
+      `Invoice ${detail.invoiceNumber ?? ""} from ${invoice.business.name}`,
+      `Hi ${invoice.contact.name},\n\nPlease find attached invoice ${detail.invoiceNumber ?? ""} for ${amount}.\n\nThank you,\n${invoice.business.name}`,
+      [{ filename: file.filename, content: file.buffer }],
+    );
+    return { success: true };
   }
 
   async remove(businessId: string, invoiceId: string) {

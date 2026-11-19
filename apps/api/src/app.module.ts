@@ -20,6 +20,7 @@ import { InventoryModule } from "./modules/inventory/inventory.module";
 import { LeadsModule } from "./modules/leads/leads.module";
 import { ProductsModule } from "./modules/products/products.module";
 import { QuotationsModule } from "./modules/quotations/quotations.module";
+import { QuotationTemplatesModule } from "./modules/quotation-templates/quotation-templates.module";
 import { PipelineModule } from "./modules/pipeline/pipeline.module";
 import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
 import { ReportsModule } from "./modules/reports/reports.module";
@@ -51,6 +52,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     LeadsModule,
     ProductsModule,
     QuotationsModule,
+    QuotationTemplatesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

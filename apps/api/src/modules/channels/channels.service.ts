@@ -186,6 +186,7 @@ export class ChannelsService {
     destination: string,
     subject: string,
     body: string,
+    attachments?: Array<{ filename: string; content: Buffer }>,
   ) {
     const connection = await this.requireConnection(businessId, "EMAIL");
     const response = await fetch("https://api.resend.com/emails", {
@@ -202,6 +203,14 @@ export class ChannelsService {
         to: [destination],
         subject,
         text: body,
+        ...(attachments?.length
+          ? {
+              attachments: attachments.map((attachment) => ({
+                filename: attachment.filename,
+                content: attachment.content.toString("base64"),
+              })),
+            }
+          : {}),
       }),
     });
     const payload = (await response.json().catch(() => ({}))) as Record<

@@ -1,7 +1,11 @@
 "use client";
 
-import type { QuotationConvertResponse, QuotationDetail as QuotationDetailType } from "@msme-crm/shared-types";
-import { ArrowLeft, Loader2, Pencil, Send, ThumbsUp, Trash2 } from "lucide-react";
+import type {
+  QuotationConvertResponse,
+  QuotationDetail as QuotationDetailType,
+  QuotationTemplateSummary,
+} from "@msme-crm/shared-types";
+import { ArrowLeft, Download, Loader2, Pencil, Send, ThumbsUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -9,13 +13,16 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/quotations/quotation-list";
-import { apiFetch } from "@/lib/api";
+import { apiDownload, apiFetch } from "@/lib/api";
 import { formatDate, formatInr } from "@/lib/billing";
 
 export function QuotationDetail({ quotationId }: { quotationId: string }) {
   const t = useTranslations("Quotations");
   const router = useRouter();
   const [quotation, setQuotation] = useState<QuotationDetailType | null>(null);
+  const [templates, setTemplates] = useState<QuotationTemplateSummary[]>([]);
+  const [templateId, setTemplateId] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,6 +33,32 @@ export function QuotationDetail({ quotationId }: { quotationId: string }) {
   }, [quotationId]);
 
   useEffect(() => void load(), [load]);
+
+  useEffect(() => {
+    apiFetch<QuotationTemplateSummary[]>("/quotation-templates")
+      .then(setTemplates)
+      .catch(() => undefined);
+  }, []);
+
+  async function downloadPdf() {
+    if (!quotation) return;
+    setDownloading(true);
+    setError("");
+    try {
+      const query = templateId ? "?templateId=" + encodeURIComponent(templateId) : "";
+      const blob = await apiDownload("/quotations/" + quotation.id + "/pdf" + query);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "Quotation-" + quotation.quoteNumber + ".pdf";
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to download PDF");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function send() {
     if (!confirm(t("sendConfirm"))) return;
@@ -121,7 +154,32 @@ export function QuotationDetail({ quotationId }: { quotationId: string }) {
               {quotation.contact.name} · {quotation.contact.phone}
             </p>
           </div>
-          <StatusBadge status={quotation.status} label={t(quotation.status)} />
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={quotation.status} label={t(quotation.status)} />
+            {templates.length ? (
+              <select
+                aria-label="PDF template"
+                className="h-9 rounded-md border bg-white px-2 text-sm outline-none focus:border-primary"
+                onChange={(event) => setTemplateId(event.target.value)}
+                value={templateId}
+              >
+                <option value="">Default template</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <Button disabled={downloading} onClick={() => void downloadPdf()} size="sm" variant="outline">
+              {downloading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              PDF
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {error ? (

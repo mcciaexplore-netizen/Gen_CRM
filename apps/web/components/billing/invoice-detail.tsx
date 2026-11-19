@@ -10,6 +10,7 @@ import {
   Download,
   FileCheck2,
   Loader2,
+  Mail,
   Pencil,
   ReceiptIndianRupee,
   Trash2,
@@ -34,6 +35,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const [paidAt, setPaidAt] = useState(defaultPaymentTime);
   const [working, setWorking] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     apiFetch<InvoiceDetailType>("/billing/invoices/" + invoiceId)
@@ -120,6 +122,26 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Unable to download PDF",
+      );
+    } finally {
+      setWorking("");
+    }
+  }
+
+  async function send() {
+    if (!invoice) return;
+    setWorking("send");
+    setError("");
+    setNotice("");
+    try {
+      await apiFetch("/billing/invoices/" + invoice.id + "/send", {
+        method: "POST",
+        body: "{}",
+      });
+      setNotice("Invoice emailed to " + invoice.contact.name + ".");
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Unable to send invoice",
       );
     } finally {
       setWorking("");
@@ -220,6 +242,20 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
                   Issue invoice
                 </Button>
               ) : null}
+              {invoice.status !== "draft" ? (
+                <Button
+                  disabled={Boolean(working)}
+                  onClick={() => void send()}
+                  variant="outline"
+                >
+                  {working === "send" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  Send
+                </Button>
+              ) : null}
               {invoice.status !== "draft" &&
               invoice.eInvoiceApplicable &&
               !invoice.irn ? (
@@ -245,6 +281,12 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
               role="alert"
             >
               {error}
+            </p>
+          ) : null}
+
+          {notice ? (
+            <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {notice}
             </p>
           ) : null}
 

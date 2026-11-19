@@ -8,7 +8,10 @@ import {
   Post,
   Put,
   Query,
+  Res,
+  StreamableFile,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { CurrentBusiness } from "../../common/decorators/current-business.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -53,6 +56,24 @@ export class QuotationsController {
     @Param("id", ParseUUIDPipe) id: string,
   ) {
     return this.quotations.findOne(businessId, id);
+  }
+
+  @Get(":id/pdf")
+  @Roles("OWNER", "ACCOUNTANT", "STAFF")
+  async pdf(
+    @CurrentBusiness() businessId: string,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query("templateId") templateId: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.quotations.pdf(businessId, id, templateId || undefined);
+    response.setHeader("Content-Type", "application/pdf");
+    response.setHeader(
+      "Content-Disposition",
+      'attachment; filename="' + file.filename.replace(/[^a-zA-Z0-9_.-]/g, "-") + '"',
+    );
+    response.setHeader("Cache-Control", "private, no-store");
+    return new StreamableFile(file.buffer);
   }
 
   @Put(":id")

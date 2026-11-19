@@ -5,7 +5,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Prisma, QuotationStatus } from "@prisma/client";
+import * as Handlebars from "handlebars";
+import { HtmlPdfService } from "../../common/pdf/html-pdf.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { QuotationTemplatesService } from "../quotation-templates/quotation-templates.service";
+import { DEFAULT_QUOTATION_TEMPLATE_HTML } from "./default-quotation-template";
 import type { SaveQuotationDto, QuotationLineItemDto } from "./dto/save-quotation.dto";
 import type { ListQuotationsQueryDto } from "./dto/list-quotations-query.dto";
 
@@ -40,7 +44,11 @@ export interface LineItemCalculated {
 
 @Injectable()
 export class QuotationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly templates: QuotationTemplatesService,
+    private readonly htmlPdf: HtmlPdfService,
+  ) {}
 
   async options(businessId: string) {
     const [contacts, deals, products] = await Promise.all([
@@ -305,6 +313,26 @@ export class QuotationsService {
     return { success: true };
   }
 
+  async pdf(businessId: string, id: string, templateId?: string) {
+    const quotation = await this.prisma.quotation.findFirst({
+      where: { id, businessId, deletedAt: null },
+      select: this.quotationPdfSelect(),
+    });
+    if (!quotation) throw new NotFoundException("Quotation not found");
+
+    const html = templateId
+      ? await this.templates.getHtml(businessId, templateId)
+      : (await this.templates.getDefaultHtml(businessId)) ?? DEFAULT_QUOTATION_TEMPLATE_HTML;
+
+    const template = Handlebars.compile(html, { noEscape: true });
+    const renderedHtml = template(this.toPdfContext(quotation));
+    const buffer = await this.htmlPdf.render(renderedHtml);
+    return {
+      buffer,
+      filename: `Quotation-${quotation.quoteNumber}.pdf`,
+    };
+  }
+
   // ── private helpers ─────────────────────────────────────────────────────────
 
   private calculate(items: Array<QuotationLineItemDto | LineItemCalculated>) {
@@ -424,6 +452,85 @@ export class QuotationsService {
       deal: { select: { id: true, title: true } },
       createdBy: { select: { id: true, name: true } },
     } satisfies Prisma.QuotationSelect;
+  }
+
+  private quotationPdfSelect() {
+    return {
+      id: true,
+      quoteNumber: true,
+      status: true,
+      expiresAt: true,
+      notes: true,
+      lineItems: true,
+      subtotal: true,
+      taxTotal: true,
+      grandTotal: true,
+      createdAt: true,
+      contact: { select: { name: true, phone: true, email: true } },
+      business: {
+        select: {
+          name: true,
+          gstin: true,
+          stateCode: true,
+          users: {
+            where: { role: "OWNER", deletedAt: null },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { email: true, phone: true },
+          },
+        },
+      },
+    } satisfies Prisma.QuotationSelect;
+  }
+
+  private toPdfContext(
+    quotation: Prisma.QuotationGetPayload<{ select: ReturnType<QuotationsService["quotationPdfSelect"]> }>,
+  ) {
+    const formatInr = (value: number) =>
+      new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(value);
+    const formatDate = (value: Date | null) =>
+      value
+        ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(value)
+        : null;
+    const lineItems = this.parseLineItems(quotation.lineItems);
+
+    return {
+      business: {
+        name: quotation.business.name,
+        email: quotation.business.users[0]?.email ?? null,
+        phone: quotation.business.users[0]?.phone ?? null,
+        gstin: quotation.business.gstin,
+        stateCode: quotation.business.stateCode,
+      },
+      quotation: {
+        quoteNumber: quotation.quoteNumber,
+        status: statusFromPrisma[quotation.status],
+        expiresAt: formatDate(quotation.expiresAt),
+        notes: quotation.notes,
+        createdAt: formatDate(quotation.createdAt),
+      },
+      contact: {
+        name: quotation.contact.name,
+        phone: quotation.contact.phone,
+        email: quotation.contact.email,
+      },
+      lineItems: lineItems.map((item) => ({
+        ...item,
+        rateFormatted: formatInr(item.rate),
+        lineTotalFormatted: formatInr(item.lineTotal),
+      })),
+      subtotal: Number(quotation.subtotal),
+      subtotalFormatted: formatInr(Number(quotation.subtotal)),
+      taxTotal: Number(quotation.taxTotal),
+      taxTotalFormatted: formatInr(Number(quotation.taxTotal)),
+      grandTotal: Number(quotation.grandTotal),
+      grandTotalFormatted: formatInr(Number(quotation.grandTotal)),
+    };
   }
 
   private quotationListSelect() {

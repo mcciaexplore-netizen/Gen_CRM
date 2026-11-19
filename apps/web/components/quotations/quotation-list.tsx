@@ -1,7 +1,7 @@
 "use client";
 
 import type { QuotationListResponse, QuotationStatus, QuotationSummary } from "@msme-crm/shared-types";
-import { FilePlus2, FileText, Loader2 } from "lucide-react";
+import { FilePlus2, FileText, LayoutTemplate, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -45,11 +45,18 @@ export function QuotationList() {
           <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Button asChild>
-          <Link href="/quotations/new">
-            <FilePlus2 className="mr-2 h-4 w-4" /> {t("new")}
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/quotations/templates">
+              <LayoutTemplate className="mr-2 h-4 w-4" /> Templates
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/quotations/new">
+              <FilePlus2 className="mr-2 h-4 w-4" /> {t("new")}
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error ? (

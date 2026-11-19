@@ -6,9 +6,10 @@ import { InvoiceAutomationService } from "./invoice-automation.service";
 import { InvoicePdfService } from "./invoice-pdf.service";
 import { PlaceholderGSTComplianceProvider } from "./placeholder-gst-compliance.provider";
 import { InventoryModule } from "../inventory/inventory.module";
+import { ChannelsModule } from "../channels/channels.module";
 
 @Module({
-  imports: [InventoryModule],
+  imports: [InventoryModule, ChannelsModule],
   controllers: [BillingController],
   providers: [
     BillingService,

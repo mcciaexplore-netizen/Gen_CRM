@@ -143,6 +143,14 @@ export class BillingController {
     return this.billing.issue(businessId, user.sub, invoiceId);
   }
 
+  @Post("invoices/:id/send")
+  send(
+    @CurrentBusiness() businessId: string,
+    @Param("id", ParseUUIDPipe) invoiceId: string,
+  ) {
+    return this.billing.send(businessId, invoiceId);
+  }
+
   @Post("invoices/:id/payments")
   addPayment(
     @CurrentBusiness() businessId: string,
