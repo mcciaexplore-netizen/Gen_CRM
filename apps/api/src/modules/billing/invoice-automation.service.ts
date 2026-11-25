@@ -2,11 +2,21 @@ import { Injectable } from "@nestjs/common";
 import { InvoiceStatus, RelatedEntityType, TaskSource } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 
+const SYNC_THROTTLE_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class InvoiceAutomationService {
+  private readonly lastSyncedAt = new Map<string, number>();
+
   constructor(private readonly prisma: PrismaService) {}
 
   async syncOverdue(businessId: string, now = new Date()) {
+    const last = this.lastSyncedAt.get(businessId);
+    if (last !== undefined && now.getTime() - last < SYNC_THROTTLE_MS) {
+      return { invoicesMarkedOverdue: 0, reminderTasksCreated: 0 };
+    }
+    this.lastSyncedAt.set(businessId, now.getTime());
+
     const today = this.indiaDate(now);
     const candidates = await this.prisma.invoice.findMany({
       where: {
